@@ -1,0 +1,69 @@
+:root {
+  --grid-size: 8;
+  --cell-size: 40px;
+}
+
+
+body {
+  font-family: monospace;
+  padding: 1rem;
+}
+
+h1 {
+  font-size: 1rem;
+}
+
+.size-slider-container {
+  padding-bottom: 1rem;
+
+  input {
+    width: 70%;
+  }
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.clear-button {
+  padding: 0.5rem 0;
+  background-color: #fff;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  &:hover {
+    text-decoration: none;
+  }
+  font-family: monospace;
+  padding-bottom: 2rem;
+}
+
+.grid {
+  display: grid;
+  grid-auto-flow: row;
+  grid-template-rows: repeat(var(--grid-size), var(--cell-size));
+  grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+  gap: 0;
+}
+
+.cell {
+  height: var(--cell-size);
+  width: var(--cell-size);
+  border: 1px solid #000;
+  margin: 0;
+  position: relative;
+}
+
+.cell.block {
+  background-color: #000;
+}
+
+.cell::before {
+  content: attr(data-number);
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  font-size: 0.75rem;
+  pointer-events: none;
+  user-select: none;
+}
