@@ -261,27 +261,18 @@ function createCell(i, j) {
     input.type = "text";
     input.maxLength = 1;
     input.classList.add("cell-input");
-    input.style.width = "100%";
-    input.style.height = "100%";
-    input.style.textAlign = "center";
-    input.style.fontFamily = "monospace";
-    input.style.fontSize = "1.4em";
-    input.style.background = "transparent";
-    input.style.border = "none";
-    input.style.outline = "none";
     input.style.position = "absolute";
     input.style.top = "0";
     input.style.left = "0";
     input.style.right = "0";
     input.style.bottom = "0";
-    input.style.padding = "0";
-    input.style.margin = "0";
     input.style.color = "transparent";
+    input.style.background = "transparent";
+    input.style.border = "none";
+    input.style.outline = "none";
     input.style.caretColor = "transparent";
     input.style.zIndex = "1";
     input.autocomplete = "off";
-    input.autocapitalize = "on";
-    input.spellcheck = false;
 
     // Move to next cell on input
     input.addEventListener("input", (e) => {
