@@ -43,9 +43,10 @@ h1 {
     grid-template-areas:
         "size-slider size-slider size-slider"
         "block-toggle block-toggle clear-button"
-        "bpm-input bpm-input play-button";
+        "bpm-input bpm-input play-button"
+        "share-button share-button share-button";
     grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 4rem 4rem 4rem;
+    grid-template-rows: 4rem 4rem 4rem 4rem;
     height: min-content;
     gap: 1px;
     border: 1px solid #000;
@@ -53,7 +54,8 @@ h1 {
 }
 
 .clear-button,
-.play-button {
+.play-button,
+.share-button {
     background-color: #fff;
     border: none;
     cursor: pointer;
@@ -76,6 +78,12 @@ h1 {
 .play-button {
     grid-area: play-button;
     border-top: 1px solid #000;
+}
+
+.share-button {
+    grid-area: share-button;
+    border-top: 1px solid #000;
+    border-left: none;
 }
 
 .grid {

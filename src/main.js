@@ -4,13 +4,13 @@ const INITIAL_GRID_SIZE = 8;
 const MAX_GRID_SIZE = 16;
 
 let gridSize = INITIAL_GRID_SIZE;
-let cellStates = new Map(); // Store cell states as "row,col" -> boolean
+let cellStates = new Map(); // Store cell states as "row,col" -> text or '.'
 let isPlaying = false;
 let audioContext = null;
 let currentStep = 0;
-let sequencerTimeout = null;
+let sequencerInterval;
 let stepDuration = 500; // Default 120 BPM
-let blocksToggleSwitch = null; // Will be set to the DOM element in main()
+let blocksToggleSwitch;
 
 function updateGrid() {
     const grid = document.querySelector(".grid");
@@ -62,8 +62,10 @@ function changeGridSize(newGridSize) {
                 // Restore state if it exists
                 const stateKey = `${i},${j}`;
                 if (cellStates.has(stateKey)) {
-                    if (cellStates.get(stateKey)) {
+                    if (cellStates.get(stateKey) === ".") {
                         cell.classList.add("block");
+                    } else {
+                        cell.dataset.text = cellStates.get(stateKey);
                     }
                 }
                 // Find the correct insertion point: after the last cell in this row
@@ -97,7 +99,12 @@ function changeGridSize(newGridSize) {
                 );
                 if (cell) {
                     const stateKey = `${i},${j}`;
-                    cellStates.set(stateKey, cell.classList.contains("block"));
+                    cellStates.set(
+                        stateKey,
+                        cell.classList.contains("block")
+                            ? "."
+                            : cell.dataset.text
+                    );
                 }
             }
         }
@@ -129,7 +136,6 @@ function changeGridSize(newGridSize) {
     gridSize = newGridSize;
     document.documentElement.style.setProperty("--grid-size", gridSize);
     updateGrid();
-    updateURLHash();
 }
 
 function toggleCell(event) {
@@ -174,7 +180,34 @@ function toggleCell(event) {
     }
 
     updateGrid();
-    updateURLHash();
+}
+
+function clearBlocks() {
+    const cells = document.querySelectorAll(".cell");
+    cells.forEach((cell) => {
+        cell.classList.remove("block");
+    });
+    // Clear saved states as well
+    for (let cell of cellStates) {
+        if (cellStates.get(cell) === ".") {
+            cellStates.set(cell, "");
+        }
+    }
+    updateGrid();
+}
+
+function clearText() {
+    const cells = document.querySelectorAll(".cell");
+    cells.forEach((cell) => {
+        cell.dataset.text = "";
+    });
+    // Clear saved states as well
+    for (let cell of cellStates) {
+        if (/^[A-Z]$/.test(cellStates.get(cell))) {
+            cellStates.set(cell, "");
+        }
+    }
+    updateGrid();
 }
 
 function getNextEmptyCell(i, j) {
@@ -286,7 +319,6 @@ function createCell(i, j) {
             nextCellInput.focus();
             nextCellInput.select();
         }
-        updateURLHash();
     });
 
     // Move to previous cell on backspace if empty
@@ -296,7 +328,6 @@ function createCell(i, j) {
                 // Clear the text in current cell
                 e.preventDefault();
                 cell.dataset.text = "";
-                updateURLHash();
             } else {
                 // Move to previous empty cell
                 const prevCell = getPrevEmptyCell(i, j);
@@ -373,7 +404,6 @@ function createCell(i, j) {
             }
 
             updateGrid();
-            updateURLHash();
         }
     });
 
@@ -567,6 +597,13 @@ function main() {
     const sizeSliderContainer = createSliderComponents();
     controlPanel.appendChild(sizeSliderContainer);
 
+    const clearButton = document.createElement("button");
+    clearButton.textContent = "clear blocks";
+    clearButton.classList.add("clear-button");
+    clearButton.addEventListener("click", clearBlocks);
+
+    controlPanel.appendChild(clearButton);
+
     // Toggle switch for blocks/text
     const toggleContainer = document.createElement("div");
     toggleContainer.classList.add("toggle-container");
@@ -582,28 +619,21 @@ function main() {
 
     toggleSwitch.addEventListener("change", () => {
         toggleLabel.textContent = toggleSwitch.checked ? "blocks" : "text";
+        if (toggleSwitch.checked) {
+            clearButton.textContent = "clear blocks";
+            clearButton.removeEventListener("click", clearText);
+            clearButton.addEventListener("click", clearBlocks);
+        } else {
+            clearButton.textContent = "clear text";
+            clearButton.removeEventListener("click", clearBlocks);
+            clearButton.addEventListener("click", clearText);
+        }
         updateInputFocusability();
     });
 
     toggleContainer.appendChild(toggleLabel);
     toggleContainer.appendChild(toggleSwitch);
     controlPanel.appendChild(toggleContainer);
-
-    const clearButton = document.createElement("button");
-    clearButton.textContent = "clear blocks";
-    clearButton.classList.add("clear-button");
-    clearButton.addEventListener("click", () => {
-        const cells = document.querySelectorAll(".cell");
-        cells.forEach((cell) => {
-            cell.classList.remove("block");
-        });
-        // Clear saved states as well
-        cellStates.clear();
-        updateGrid();
-        updateURLHash();
-    });
-
-    controlPanel.appendChild(clearButton);
 
     const bpmInput = document.createElement("div");
     bpmInput.classList.add("bpm-input");
@@ -619,7 +649,6 @@ function main() {
     bpmField.addEventListener("input", (event) => {
         const newBpm = parseInt(event.target.value) || 150;
         changeTempo(newBpm);
-        updateURLHash();
     });
 
     bpmInput.appendChild(bpmLabel);
@@ -639,6 +668,34 @@ function main() {
         }
     });
     controlPanel.appendChild(playButton);
+
+    const shareButton = document.createElement("button");
+    shareButton.textContent = "share this grid";
+    shareButton.classList.add("share-button");
+    shareButton.addEventListener("click", async () => {
+        updateURLHash();
+
+        // Copy the URL to clipboard
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+            // Show success message
+            const originalText = shareButton.textContent;
+            shareButton.textContent = "link copied!";
+            setTimeout(() => {
+                shareButton.textContent = originalText;
+            }, 1000);
+        } catch (err) {
+            // Fallback for older browsers or if clipboard API fails
+            console.warn("Could not copy to clipboard:", err);
+            // Still show the URL was updated
+            const originalText = shareButton.textContent;
+            shareButton.textContent = "URL updated";
+            setTimeout(() => {
+                shareButton.textContent = originalText;
+            }, 1000);
+        }
+    });
+    controlPanel.appendChild(shareButton);
 
     const grid = createGrid();
     machineContainer.appendChild(grid);
@@ -677,7 +734,7 @@ function playStep() {
 
     // Schedule next step if still playing
     if (isPlaying) {
-        sequencerTimeout = setTimeout(playStep, stepDuration);
+        sequencerInterval = setTimeout(playStep, stepDuration);
     }
 }
 
@@ -740,7 +797,7 @@ function startSequencer() {
     stepDuration = (60 / bpm) * 1000; // Convert BPM to milliseconds per step
 
     // Start the sequencer loop
-    sequencerTimeout = setTimeout(playStep, stepDuration);
+    sequencerInterval = setTimeout(playStep, stepDuration);
 }
 
 function stopSequencer() {
@@ -748,9 +805,9 @@ function stopSequencer() {
 
     isPlaying = false;
 
-    if (sequencerTimeout) {
-        clearTimeout(sequencerTimeout);
-        sequencerTimeout = null;
+    if (sequencerInterval) {
+        clearTimeout(sequencerInterval);
+        sequencerInterval = null;
     }
 
     // Remove all playing highlights
