@@ -10,6 +10,7 @@ let audioContext = null;
 let currentStep = 0;
 let sequencerTimeout = null;
 let stepDuration = 500; // Default 120 BPM
+let blocksToggleSwitch = null; // Will be set to the DOM element in main()
 
 function updateGrid() {
     const grid = document.querySelector(".grid");
@@ -132,28 +133,84 @@ function changeGridSize(newGridSize) {
 }
 
 function toggleCell(event) {
-    const tappedCell = event.target;
-    const i = parseInt(tappedCell.dataset.row);
-    const j = parseInt(tappedCell.dataset.col);
+    const cell = event.currentTarget;
+
+    // If in text mode, just focus the input
+    if (blocksToggleSwitch && !blocksToggleSwitch.checked) {
+        const input = cell.querySelector("input.cell-input");
+        if (input) {
+            input.focus();
+            input.select();
+        }
+        return;
+    }
+
+    // Blocks mode: toggle blocks normally
+    const i = parseInt(cell.dataset.row);
+    const j = parseInt(cell.dataset.col);
     const symmetricCell = document.querySelector(
         `[data-row="${gridSize - i - 1}"][data-col="${gridSize - j - 1}"]`
     );
 
-    // Check for key combinations
     if (event.shiftKey) {
         // Shift + click: toggle only the clicked cell (no symmetry)
-        tappedCell.classList.toggle("block");
+        cell.classList.toggle("block");
+        if (cell.classList.contains("block")) {
+            cell.dataset.text = "";
+        }
     } else {
         // Normal click: toggle both cells in the same state
-        tappedCell.classList.toggle("block");
+        cell.classList.toggle("block");
         symmetricCell.classList.toggle(
             "block",
-            tappedCell.classList.contains("block")
+            cell.classList.contains("block")
         );
+        if (cell.classList.contains("block")) {
+            cell.dataset.text = "";
+            if (symmetricCell) {
+                symmetricCell.dataset.text = "";
+            }
+        }
     }
 
     updateGrid();
     updateURLHash();
+}
+
+function getNextEmptyCell(i, j) {
+    let total = gridSize * gridSize;
+    let startIndex = i * gridSize + j;
+    for (let offset = 1; offset < total; offset++) {
+        let idx = (startIndex + offset) % total;
+        let row = Math.floor(idx / gridSize);
+        let col = idx % gridSize;
+        const cell = document.querySelector(
+            `[data-row='${row}'][data-col='${col}']`
+        );
+        if (cell && !cell.classList.contains("block")) {
+            return cell;
+        }
+    }
+    // If all are blocks, return the original cell
+    return document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+}
+
+function getPrevEmptyCell(i, j) {
+    let total = gridSize * gridSize;
+    let startIndex = i * gridSize + j;
+    for (let offset = 1; offset < total; offset++) {
+        let idx = (startIndex - offset + total) % total; // Go backwards
+        let row = Math.floor(idx / gridSize);
+        let col = idx % gridSize;
+        const cell = document.querySelector(
+            `[data-row='${row}'][data-col='${col}']`
+        );
+        if (cell && !cell.classList.contains("block")) {
+            return cell;
+        }
+    }
+    // If all are blocks, return the original cell
+    return document.querySelector(`[data-row='${i}'][data-col='${j}']`);
 }
 
 function createCell(i, j) {
@@ -162,7 +219,184 @@ function createCell(i, j) {
     cell.dataset.row = i;
     cell.dataset.col = j;
     cell.dataset.number = "";
+    cell.dataset.text = ""; // Store text value here
+    cell.tabIndex = 0;
     cell.addEventListener("click", toggleCell);
+
+    // Add a hidden text input for capturing keyboard input
+    const input = document.createElement("input");
+    input.type = "text";
+    input.maxLength = 1;
+    input.classList.add("cell-input");
+    input.style.width = "100%";
+    input.style.height = "100%";
+    input.style.textAlign = "center";
+    input.style.fontFamily = "monospace";
+    input.style.fontSize = "1.4em";
+    input.style.background = "transparent";
+    input.style.border = "none";
+    input.style.outline = "none";
+    input.style.position = "absolute";
+    input.style.top = "0";
+    input.style.left = "0";
+    input.style.right = "0";
+    input.style.bottom = "0";
+    input.style.padding = "0";
+    input.style.margin = "0";
+    input.style.color = "transparent";
+    input.style.caretColor = "transparent";
+    input.style.zIndex = "1";
+    input.autocomplete = "off";
+    input.autocapitalize = "on";
+    input.spellcheck = false;
+
+    // Move to next cell on input
+    input.addEventListener("input", (e) => {
+        if (input.value.length > 1) {
+            input.value = input.value[0];
+        }
+
+        // If typing on a block, remove the block first
+        if (cell.classList.contains("block")) {
+            const i = parseInt(cell.dataset.row);
+            const j = parseInt(cell.dataset.col);
+            const symmetricCell = document.querySelector(
+                `[data-row="${gridSize - i - 1}"][data-col="${
+                    gridSize - j - 1
+                }"]`
+            );
+
+            cell.classList.remove("block");
+            if (symmetricCell) {
+                symmetricCell.classList.remove("block");
+            }
+
+            updateGrid();
+        }
+
+        // Always store/display as uppercase
+        const val = input.value.toUpperCase();
+        cell.dataset.text = val;
+        input.value = ""; // Clear input after storing
+        // Move to next cell in the row
+        const nextCell = getNextEmptyCell(i, j);
+        const nextCellInput = nextCell.querySelector("input.cell-input");
+
+        if (val && nextCellInput) {
+            nextCellInput.focus();
+            nextCellInput.select();
+        }
+        updateURLHash();
+    });
+
+    // Move to previous cell on backspace if empty
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace") {
+            if (cell.dataset.text !== "") {
+                // Clear the text in current cell
+                e.preventDefault();
+                cell.dataset.text = "";
+                updateURLHash();
+            } else {
+                // Move to previous empty cell
+                const prevCell = getPrevEmptyCell(i, j);
+                const prevCellInput =
+                    prevCell.querySelector("input.cell-input");
+                if (prevCellInput) {
+                    e.preventDefault();
+                    prevCellInput.focus();
+                    prevCellInput.select();
+                }
+            }
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            const targetRow = (i - 1 + gridSize) % gridSize;
+            const targetCell = document.querySelector(
+                `[data-row='${targetRow}'][data-col='${j}'] input.cell-input`
+            );
+            if (targetCell) {
+                targetCell.focus();
+                targetCell.select();
+            }
+        } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            const targetRow = (i + 1) % gridSize;
+            const targetCell = document.querySelector(
+                `[data-row='${targetRow}'][data-col='${j}'] input.cell-input`
+            );
+            if (targetCell) {
+                targetCell.focus();
+                targetCell.select();
+            }
+        } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            const targetCol = (j - 1 + gridSize) % gridSize;
+            const targetCell = document.querySelector(
+                `[data-row='${i}'][data-col='${targetCol}'] input.cell-input`
+            );
+            if (targetCell) {
+                targetCell.focus();
+                targetCell.select();
+            }
+        } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            const targetCol = (j + 1) % gridSize;
+            const targetCell = document.querySelector(
+                `[data-row='${i}'][data-col='${targetCol}'] input.cell-input`
+            );
+            if (targetCell) {
+                targetCell.focus();
+                targetCell.select();
+            }
+        } else if (e.key === ".") {
+            e.preventDefault();
+            // Toggle block directly
+            const i = parseInt(cell.dataset.row);
+            const j = parseInt(cell.dataset.col);
+            const symmetricCell = document.querySelector(
+                `[data-row="${gridSize - i - 1}"][data-col="${
+                    gridSize - j - 1
+                }"]`
+            );
+
+            cell.classList.toggle("block");
+            symmetricCell.classList.toggle(
+                "block",
+                cell.classList.contains("block")
+            );
+
+            if (cell.classList.contains("block")) {
+                cell.dataset.text = "";
+                if (symmetricCell) {
+                    symmetricCell.dataset.text = "";
+                }
+            }
+
+            updateGrid();
+            updateURLHash();
+        }
+    });
+
+    // Add focus/blur handlers for visual indication
+    input.addEventListener("focus", () => {
+        cell.classList.add("focused");
+    });
+
+    input.addEventListener("blur", () => {
+        cell.classList.remove("focused");
+    });
+
+    cell.appendChild(input);
+
+    // Set initial focusability (default to blocks mode when toggle not yet created)
+    if (blocksToggleSwitch) {
+        updateInputFocusability();
+    } else {
+        // Default to blocks mode (inputs disabled)
+        input.style.pointerEvents = "none";
+        input.tabIndex = -1;
+    }
+
     return cell;
 }
 
@@ -216,27 +450,33 @@ function createSliderComponents() {
 }
 
 function encodeGridState() {
-    const state = {
-        size: gridSize,
-        cells: [],
-    };
-
-    // Collect all blocked cells
-    const cells = document.querySelectorAll(".cell");
-    cells.forEach((cell) => {
-        if (cell.classList.contains("block")) {
-            const row = parseInt(cell.dataset.row);
-            const col = parseInt(cell.dataset.col);
-            state.cells.push([row, col]);
+    // Build a compact string representation
+    let rows = [];
+    for (let i = 0; i < gridSize; i++) {
+        let row = "";
+        for (let j = 0; j < gridSize; j++) {
+            const cell = document.querySelector(
+                `[data-row="${i}"][data-col="${j}"]`
+            );
+            if (cell.classList.contains("block")) {
+                row += ".";
+            } else {
+                let val = cell.dataset.text || "";
+                if (val && /^[A-Z]$/.test(val)) {
+                    row += val;
+                } else {
+                    row += "-";
+                }
+            }
         }
-    });
-
-    // Get BPM
-    const bpmField = document.querySelector(".bpm-input input");
-    if (bpmField) {
-        state.bpm = parseInt(bpmField.value) || 150;
+        rows.push(row);
     }
-
+    const bpmField = document.querySelector(".bpm-input input");
+    const bpm = bpmField ? parseInt(bpmField.value) || 150 : 150;
+    const state = {
+        grid: rows.join("\n"),
+        bpm: bpm,
+    };
     return btoa(JSON.stringify(state));
 }
 
@@ -255,18 +495,16 @@ function loadStateFromHash() {
     if (!hash) return;
 
     const state = decodeGridState(hash);
-    if (!state) return;
+    if (!state || !state.grid) return;
+    const rows = state.grid.split("\n");
 
     // Set grid size
-    if (
-        state.size &&
-        state.size >= INITIAL_GRID_SIZE &&
-        state.size <= MAX_GRID_SIZE
-    ) {
-        changeGridSize(state.size);
+    const newSize = rows.length;
+    if (newSize >= INITIAL_GRID_SIZE && newSize <= MAX_GRID_SIZE) {
+        changeGridSize(newSize);
         const sizeSlider = document.getElementById("size-slider");
         if (sizeSlider) {
-            sizeSlider.value = state.size;
+            sizeSlider.value = newSize;
         }
     }
 
@@ -279,24 +517,30 @@ function loadStateFromHash() {
         }
     }
 
-    // Clear existing blocks
+    // Clear all blocks and text
     const cells = document.querySelectorAll(".cell");
     cells.forEach((cell) => {
         cell.classList.remove("block");
+        cell.dataset.text = "";
     });
 
-    // Apply saved cell states
-    if (state.cells && Array.isArray(state.cells)) {
-        state.cells.forEach(([row, col]) => {
+    // Apply state from rows
+    for (let i = 0; i < rows.length; i++) {
+        for (let j = 0; j < rows[i].length; j++) {
+            const ch = rows[i][j];
             const cell = document.querySelector(
-                `[data-row="${row}"][data-col="${col}"]`
+                `[data-row="${i}"][data-col="${j}"]`
             );
-            if (cell) {
+            if (!cell) continue;
+            if (ch === ".") {
                 cell.classList.add("block");
+            } else if (ch === "-") {
+                // nothing
+            } else if (/^[A-Z]$/.test(ch)) {
+                cell.dataset.text = ch;
             }
-        });
+        }
     }
-
     updateGrid();
 }
 
@@ -338,10 +582,11 @@ function main() {
 
     toggleSwitch.addEventListener("change", () => {
         toggleLabel.textContent = toggleSwitch.checked ? "blocks" : "text";
+        updateInputFocusability();
     });
 
-    toggleContainer.appendChild(toggleSwitch);
     toggleContainer.appendChild(toggleLabel);
+    toggleContainer.appendChild(toggleSwitch);
     controlPanel.appendChild(toggleContainer);
 
     const clearButton = document.createElement("button");
@@ -401,6 +646,9 @@ function main() {
 
     // Load state from URL hash if present
     loadStateFromHash();
+
+    blocksToggleSwitch = toggleSwitch;
+    window.blocksToggleSwitch = toggleSwitch;
 }
 
 function playStep() {
@@ -512,6 +760,19 @@ function stopSequencer() {
 
 function changeTempo(newBpm) {
     stepDuration = (60 / newBpm) * 1000;
+}
+
+function updateInputFocusability() {
+    const isTextMode = blocksToggleSwitch && !blocksToggleSwitch.checked;
+    document.querySelectorAll(".cell-input").forEach((input) => {
+        if (isTextMode) {
+            input.style.pointerEvents = "auto";
+            input.tabIndex = 0;
+        } else {
+            input.style.pointerEvents = "none";
+            input.tabIndex = -1;
+        }
+    });
 }
 
 main();
