@@ -4,6 +4,7 @@ const INITIAL_GRID_SIZE = 8;
 const MAX_GRID_SIZE = 16;
 
 let gridSize = INITIAL_GRID_SIZE;
+let cellStates = new Map(); // Store cell states as "row,col" -> boolean
 
 function updateGrid() {
     const grid = document.querySelector(".grid");
@@ -60,6 +61,13 @@ function changeGridSize(newGridSize) {
         for (let i = 0; i < gridSize; i++) {
             for (let j = gridSize; j < newGridSize; j++) {
                 const cell = createCell(i, j);
+                // Restore state if it exists
+                const stateKey = `${i},${j}`;
+                if (cellStates.has(stateKey)) {
+                    if (cellStates.get(stateKey)) {
+                        cell.classList.add("block");
+                    }
+                }
                 // Insert after the last cell in this row
                 const lastCellInRow = cellsByRow[i][cellsByRow[i].length - 1];
                 lastCellInRow.after(cell);
@@ -69,10 +77,30 @@ function changeGridSize(newGridSize) {
         for (let i = gridSize; i < newGridSize; i++) {
             for (let j = 0; j < newGridSize; j++) {
                 const cell = createCell(i, j);
+                // Restore state if it exists
+                const stateKey = `${i},${j}`;
+                if (cellStates.has(stateKey)) {
+                    if (cellStates.get(stateKey)) {
+                        cell.classList.add("block");
+                    }
+                }
                 grid.appendChild(cell);
             }
         }
     } else if (newGridSize < gridSize) {
+        // Save states of cells that will be removed
+        for (let i = 0; i < gridSize; i++) {
+            for (let j = 0; j < gridSize; j++) {
+                const cell = document.querySelector(
+                    `[data-row="${i}"][data-col="${j}"]`
+                );
+                if (cell) {
+                    const stateKey = `${i},${j}`;
+                    cellStates.set(stateKey, cell.classList.contains("block"));
+                }
+            }
+        }
+
         // Remove rightmost cells from each row
         for (let i = 0; i < newGridSize; i++) {
             for (let j = newGridSize; j < gridSize; j++) {
@@ -211,8 +239,10 @@ function main() {
         const cells = document.querySelectorAll(".cell");
         cells.forEach((cell) => {
             cell.classList.remove("block");
-            updateGrid();
         });
+        // Clear saved states as well
+        cellStates.clear();
+        updateGrid();
     });
 
     controlPanel.appendChild(clearButton);
