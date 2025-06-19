@@ -42,7 +42,7 @@ h1 {
     width: 320px;
     grid-template-areas:
         "size-slider size-slider size-slider"
-        ". . clear-button"
+        "block-toggle block-toggle clear-button"
         "bpm-input bpm-input play-button";
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: 4rem 4rem 4rem;
@@ -155,4 +155,57 @@ h1 {
     & label {
         margin-bottom: 0;
     }
+}
+
+.toggle-container {
+    grid-area: block-toggle;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    height: 100%;
+}
+
+.toggle-switch {
+    appearance: none;
+    width: 40px;
+    height: 22px;
+    background: #ccc;
+    border-radius: 22px;
+    position: relative;
+    outline: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-right: 0.5rem;
+}
+
+.toggle-switch:checked {
+    background: #2196f3;
+}
+
+.toggle-switch::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggle-switch:checked::before {
+    transform: translateX(18px);
+}
+
+.toggle-label {
+    font-family: monospace;
+    font-size: 0.75rem;
+    user-select: none;
+    margin-left: 0.25rem;
+    width: 3.5em;
+    display: inline-block;
+    text-align: center;
+    transition: color 0.2s;
 }

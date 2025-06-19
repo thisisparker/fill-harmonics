@@ -321,8 +321,28 @@ function main() {
     machineContainer.appendChild(controlPanel);
 
     const sizeSliderContainer = createSliderComponents();
-
     controlPanel.appendChild(sizeSliderContainer);
+
+    // Toggle switch for blocks/text
+    const toggleContainer = document.createElement("div");
+    toggleContainer.classList.add("toggle-container");
+
+    const toggleLabel = document.createElement("label");
+    toggleLabel.classList.add("toggle-label");
+    toggleLabel.textContent = "blocks";
+
+    const toggleSwitch = document.createElement("input");
+    toggleSwitch.type = "checkbox";
+    toggleSwitch.checked = true;
+    toggleSwitch.classList.add("toggle-switch");
+
+    toggleSwitch.addEventListener("change", () => {
+        toggleLabel.textContent = toggleSwitch.checked ? "blocks" : "text";
+    });
+
+    toggleContainer.appendChild(toggleSwitch);
+    toggleContainer.appendChild(toggleLabel);
+    controlPanel.appendChild(toggleContainer);
 
     const clearButton = document.createElement("button");
     clearButton.textContent = "clear blocks";
@@ -492,7 +512,6 @@ function stopSequencer() {
 
 function changeTempo(newBpm) {
     stepDuration = (60 / newBpm) * 1000;
-    // The next step will use the new tempo automatically
 }
 
 main();
