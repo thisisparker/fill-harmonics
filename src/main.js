@@ -5,12 +5,10 @@ const MAX_GRID_SIZE = 16;
 
 let gridSize = INITIAL_GRID_SIZE;
 let cellStates = new Map(); // Store cell states as "row,col" -> text or '.'
-let isPlaying = false;
-let audioContext = null;
+let sequencerLoop = null;
 let currentStep = 0;
-let sequencerInterval;
-let stepDuration = 500; // Default 120 BPM
 let blocksToggleSwitch;
+let synths = []; // Array of synths, one for each row
 
 function updateGrid() {
     const grid = document.querySelector(".grid");
@@ -487,7 +485,7 @@ function encodeGridState() {
         rows.push(row);
     }
     const bpmField = document.querySelector(".bpm-input input");
-    const bpm = bpmField ? parseInt(bpmField.value) || 150 : 150;
+    const bpm = bpmField ? parseInt(bpmField.value) || 120 : 120;
     const state = {
         grid: rows.join("\n"),
         bpm: bpm,
@@ -556,7 +554,6 @@ function loadStateFromHash() {
             }
         }
     }
-    updateGrid();
 }
 
 function updateURLHash() {
@@ -630,9 +627,9 @@ function main() {
     bpmField.type = "number";
     bpmField.min = "60";
     bpmField.max = "200";
-    bpmField.value = "150";
+    bpmField.value = "120";
     bpmField.addEventListener("input", (event) => {
-        const newBpm = parseInt(event.target.value) || 150;
+        const newBpm = parseInt(event.target.value) || 120;
         changeTempo(newBpm);
     });
 
@@ -644,7 +641,7 @@ function main() {
     playButton.textContent = "play";
     playButton.classList.add("play-button");
     playButton.addEventListener("click", () => {
-        if (isPlaying) {
+        if (Tone.Transport.state === "started") {
             stopSequencer();
             playButton.textContent = "play";
         } else {
@@ -684,22 +681,43 @@ function main() {
 
     const grid = createGrid();
     machineContainer.appendChild(grid);
-    updateGrid();
 
     // Load state from URL hash if present
     loadStateFromHash();
 
+    updateGrid();
+
     blocksToggleSwitch = toggleSwitch;
     window.blocksToggleSwitch = toggleSwitch;
+
+    // Initialize synths
+    for (let i = 0; i < MAX_GRID_SIZE; i++) {
+        synths.push(
+            new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.1,
+                    sustain: 0.1,
+                    release: 1.2,
+                },
+            }).toDestination()
+        );
+    }
+
+    // Initialize sequencer loop
+    sequencerLoop = new Tone.Loop((time) => {
+        playStep(time);
+    }, "8n");
 }
 
-function playStep() {
+function playStep(time) {
     const cells = document.querySelectorAll(".cell");
 
     // Remove previous highlight
     cells.forEach((cell) => cell.classList.remove("playing"));
 
-    // Highlight current step column
+    // Highlight current step column and schedule notes
     for (let i = 0; i < gridSize; i++) {
         const cell = document.querySelector(
             `[data-row="${i}"][data-col="${currentStep}"]`
@@ -707,93 +725,72 @@ function playStep() {
         if (cell) {
             cell.classList.add("playing");
 
-            // Play sound if cell is blocked
+            // Schedule note if cell is blocked
             if (cell.classList.contains("block")) {
-                playNote(i);
+                playNote(i, time);
             }
         }
     }
 
     // Move to next step
     currentStep = (currentStep + 1) % gridSize;
-
-    // Schedule next step if still playing
-    if (isPlaying) {
-        sequencerInterval = setTimeout(playStep, stepDuration);
-    }
 }
 
-function playNote(row) {
-    if (!audioContext) return;
+function playNote(row, time) {
+    if (!synths[row]) return;
 
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    // 16 different frequencies for different rows (C3 to C5) - REVERSED ORDER
-    const frequencies = [
-        587.33, // D5
-        523.25, // C5
-        493.88, // B4
-        440.0, // A4
-        392.0, // G4
-        349.23, // F4
-        329.63, // E4
-        293.66, // D4
-        261.63, // C4
-        246.94, // B3
-        220.0, // A3
-        196.0, // G3
-        174.61, // F3
-        164.81, // E3
-        146.83, // D3
-        130.81, // C3
+    // 16 different notes for different rows (pentatonic C3 to C6)
+    const notes = [
+        "C6",
+        "A5",
+        "G5",
+        "E5",
+        "D5",
+        "C5",
+        "B4",
+        "A4",
+        "G4",
+        "E4",
+        "D4",
+        "C4",
+        "A3",
+        "G3",
+        "E3",
+        "D3",
+        "C3",
     ];
-    const frequency = frequencies[row] || 220;
+    const note = notes[row] || "A3";
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-    oscillator.type = "sine";
-
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(
-        0.01,
-        audioContext.currentTime + 0.1
-    );
-
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1);
+    // Schedule the note at the precise time
+    synths[row].triggerAttackRelease(note, "16n", time);
 }
 
 function startSequencer() {
-    if (isPlaying) return;
+    if (Tone.Transport.state === "started") return;
 
-    // Initialize audio context if needed
-    if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-
-    isPlaying = true;
+    // Start Tone.js audio context
+    Tone.start();
 
     // Get BPM from input field
     const bpmField = document.querySelector(".bpm-input input");
     const bpm = parseInt(bpmField.value) || 120;
-    stepDuration = (60 / bpm) * 1000; // Convert BPM to milliseconds per step
+    Tone.Transport.bpm.value = bpm;
 
-    // Start the sequencer loop
-    sequencerInterval = setTimeout(playStep, stepDuration);
+    // Start the sequencer loop if not already running
+    if (!sequencerLoop.started) {
+        sequencerLoop.start(0);
+    }
+
+    // Start the transport
+    Tone.Transport.start();
 }
 
 function stopSequencer() {
-    if (!isPlaying) return;
+    if (Tone.Transport.state === "stopped" || Tone.Transport.state === "paused")
+        return;
 
-    isPlaying = false;
-
-    if (sequencerInterval) {
-        clearTimeout(sequencerInterval);
-        sequencerInterval = null;
-    }
+    // Pause the transport (preserves position)
+    Tone.Transport.pause();
 
     // Remove all playing highlights
     const cells = document.querySelectorAll(".cell");
@@ -801,7 +798,7 @@ function stopSequencer() {
 }
 
 function changeTempo(newBpm) {
-    stepDuration = (60 / newBpm) * 1000;
+    Tone.Transport.bpm.value = newBpm;
 }
 
 function updateInputFocusability() {
