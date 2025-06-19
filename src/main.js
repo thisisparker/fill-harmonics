@@ -128,6 +128,7 @@ function changeGridSize(newGridSize) {
     gridSize = newGridSize;
     document.documentElement.style.setProperty("--grid-size", gridSize);
     updateGrid();
+    updateURLHash();
 }
 
 function toggleCell(event) {
@@ -152,6 +153,7 @@ function toggleCell(event) {
     }
 
     updateGrid();
+    updateURLHash();
 }
 
 function createCell(i, j) {
@@ -213,6 +215,96 @@ function createSliderComponents() {
     return sizeSliderContainer;
 }
 
+function encodeGridState() {
+    const state = {
+        size: gridSize,
+        cells: [],
+    };
+
+    // Collect all blocked cells
+    const cells = document.querySelectorAll(".cell");
+    cells.forEach((cell) => {
+        if (cell.classList.contains("block")) {
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            state.cells.push([row, col]);
+        }
+    });
+
+    // Get BPM
+    const bpmField = document.querySelector(".bpm-input input");
+    if (bpmField) {
+        state.bpm = parseInt(bpmField.value) || 150;
+    }
+
+    return btoa(JSON.stringify(state));
+}
+
+function decodeGridState(hash) {
+    try {
+        const decoded = JSON.parse(atob(hash));
+        return decoded;
+    } catch (e) {
+        console.warn("Invalid hash format:", e);
+        return null;
+    }
+}
+
+function loadStateFromHash() {
+    const hash = window.location.hash.slice(1); // Remove the # symbol
+    if (!hash) return;
+
+    const state = decodeGridState(hash);
+    if (!state) return;
+
+    // Set grid size
+    if (
+        state.size &&
+        state.size >= INITIAL_GRID_SIZE &&
+        state.size <= MAX_GRID_SIZE
+    ) {
+        changeGridSize(state.size);
+        const sizeSlider = document.getElementById("size-slider");
+        if (sizeSlider) {
+            sizeSlider.value = state.size;
+        }
+    }
+
+    // Set BPM
+    if (state.bpm) {
+        const bpmField = document.querySelector(".bpm-input input");
+        if (bpmField) {
+            bpmField.value = state.bpm;
+            changeTempo(state.bpm);
+        }
+    }
+
+    // Clear existing blocks
+    const cells = document.querySelectorAll(".cell");
+    cells.forEach((cell) => {
+        cell.classList.remove("block");
+    });
+
+    // Apply saved cell states
+    if (state.cells && Array.isArray(state.cells)) {
+        state.cells.forEach(([row, col]) => {
+            const cell = document.querySelector(
+                `[data-row="${row}"][data-col="${col}"]`
+            );
+            if (cell) {
+                cell.classList.add("block");
+            }
+        });
+    }
+
+    updateGrid();
+}
+
+function updateURLHash() {
+    const encodedState = encodeGridState();
+    window.location.hash = encodedState;
+}
+
 function main() {
     const app = document.getElementById("app");
 
@@ -243,6 +335,7 @@ function main() {
         // Clear saved states as well
         cellStates.clear();
         updateGrid();
+        updateURLHash();
     });
 
     controlPanel.appendChild(clearButton);
@@ -261,6 +354,7 @@ function main() {
     bpmField.addEventListener("input", (event) => {
         const newBpm = parseInt(event.target.value) || 150;
         changeTempo(newBpm);
+        updateURLHash();
     });
 
     bpmInput.appendChild(bpmLabel);
@@ -284,6 +378,9 @@ function main() {
     const grid = createGrid();
     machineContainer.appendChild(grid);
     updateGrid();
+
+    // Load state from URL hash if present
+    loadStateFromHash();
 }
 
 function playStep() {
@@ -327,15 +424,15 @@ function playNote(row) {
         587.33, // D5
         523.25, // C5
         493.88, // B4
-        440.0,  // A4
-        392.0,  // G4
+        440.0, // A4
+        392.0, // G4
         349.23, // F4
         329.63, // E4
         293.66, // D4
         261.63, // C4
         246.94, // B3
-        220.0,  // A3
-        196.0,  // G3
+        220.0, // A3
+        196.0, // G3
         174.61, // F3
         164.81, // E3
         146.83, // D3
