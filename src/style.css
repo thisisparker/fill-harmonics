@@ -15,6 +15,9 @@ h1 {
 .machine-container {
     display: flex;
     flex-direction: row;
+    @media (max-width: 768px) {
+        flex-direction: column;
+    }
     gap: 3rem;
 }
 
@@ -27,6 +30,8 @@ h1 {
     justify-content: space-between;
     box-sizing: border-box;
 
+    border-bottom: 1px solid #000;
+
     & input {
         width: 70%;
     }
@@ -37,17 +42,18 @@ h1 {
     width: 320px;
     grid-template-areas:
         "size-slider size-slider size-slider"
-        ". . clear-button";
+        ". . clear-button"
+        "bpm-input bpm-input play-button";
     grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 3rem 4rem;
+    grid-template-rows: 3rem 4rem 4rem;
     height: min-content;
     gap: 1px;
     border: 1px solid #000;
     padding: 1px;
 }
 
-.clear-button {
-    grid-area: clear-button;
+.clear-button,
+.play-button {
     background-color: #fff;
     border: none;
     cursor: pointer;
@@ -56,10 +62,20 @@ h1 {
     font-size: 0.75rem;
     padding: 0.5rem;
     box-sizing: border-box;
+    border-left: 1px solid #000;
 
     &:hover {
         text-decoration: none;
     }
+}
+
+.clear-button {
+    grid-area: clear-button;
+}
+
+.play-button {
+    grid-area: play-button;
+    border-top: 1px solid #000;
 }
 
 .grid {
@@ -73,13 +89,35 @@ h1 {
 .cell {
     height: var(--cell-size);
     width: var(--cell-size);
-    border: 1px solid #000;
+    border-top: 1px solid #000;
+    border-left: 1px solid #000;
     margin: 0;
     position: relative;
+    box-sizing: border-box;
+}
+
+.grid:last-child {
+    border-bottom: 1px solid #000;
+    border-right: 1px solid #000;
 }
 
 .cell.block {
     background-color: #000;
+}
+
+.cell.playing {
+    background-color: #ff6b6b;
+    border-top: 2px solid #ff0000;
+    border-left: 2px solid #ff0000;
+}
+
+.grid:last-child.playing {
+    border-bottom: 2px solid #ff0000;
+    border-right: 2px solid #ff0000;
+}
+
+.cell.block.playing {
+    background-color: #ff0000;
 }
 
 .cell::before {
@@ -90,4 +128,31 @@ h1 {
     font-size: 0.75rem;
     pointer-events: none;
     user-select: none;
+}
+
+.bpm-input {
+    grid-area: bpm-input;
+    background-color: #fff;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    font-family: monospace;
+    font-size: 0.75rem;
+    border-top: 1px solid #000;
+
+    & input {
+        width: 60%;
+        text-align: center;
+        border: none;
+        background: transparent;
+        font-family: monospace;
+        font-size: 0.75rem;
+    }
+
+    & label {
+        margin-bottom: 0;
+    }
 }

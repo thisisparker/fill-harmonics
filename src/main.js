@@ -5,6 +5,11 @@ const MAX_GRID_SIZE = 16;
 
 let gridSize = INITIAL_GRID_SIZE;
 let cellStates = new Map(); // Store cell states as "row,col" -> boolean
+let isPlaying = false;
+let audioContext = null;
+let currentStep = 0;
+let sequencerTimeout = null;
+let stepDuration = 500; // Default 120 BPM
 
 function updateGrid() {
     const grid = document.querySelector(".grid");
@@ -49,14 +54,6 @@ function changeGridSize(newGridSize) {
     const grid = document.querySelector(".grid");
 
     if (newGridSize > gridSize) {
-        const cells = Array.from(grid.querySelectorAll(".cell"));
-        const cellsByRow = [];
-        for (let i = 0; i < gridSize; i++) {
-            const rowCells = cells.filter(
-                (cell) => parseInt(cell.dataset.row) === i
-            );
-            cellsByRow.push(rowCells);
-        }
         // Add new cells to existing rows
         for (let i = 0; i < gridSize; i++) {
             for (let j = gridSize; j < newGridSize; j++) {
@@ -68,8 +65,11 @@ function changeGridSize(newGridSize) {
                         cell.classList.add("block");
                     }
                 }
-                // Insert after the last cell in this row
-                const lastCellInRow = cellsByRow[i][cellsByRow[i].length - 1];
+                // Find the correct insertion point: after the last cell in this row
+                const cellsInRow = Array.from(
+                    grid.querySelectorAll(`[data-row="${i}"]`)
+                );
+                const lastCellInRow = cellsInRow[cellsInRow.length - 1];
                 lastCellInRow.after(cell);
             }
         }
@@ -247,9 +247,155 @@ function main() {
 
     controlPanel.appendChild(clearButton);
 
+    const bpmInput = document.createElement("div");
+    bpmInput.classList.add("bpm-input");
+
+    const bpmLabel = document.createElement("label");
+    bpmLabel.textContent = "bpm";
+
+    const bpmField = document.createElement("input");
+    bpmField.type = "number";
+    bpmField.min = "60";
+    bpmField.max = "200";
+    bpmField.value = "150";
+    bpmField.addEventListener("input", (event) => {
+        const newBpm = parseInt(event.target.value) || 150;
+        changeTempo(newBpm);
+    });
+
+    bpmInput.appendChild(bpmLabel);
+    bpmInput.appendChild(bpmField);
+    controlPanel.appendChild(bpmInput);
+
+    const playButton = document.createElement("button");
+    playButton.textContent = "play";
+    playButton.classList.add("play-button");
+    playButton.addEventListener("click", () => {
+        if (isPlaying) {
+            stopSequencer();
+            playButton.textContent = "play";
+        } else {
+            startSequencer();
+            playButton.textContent = "pause";
+        }
+    });
+    controlPanel.appendChild(playButton);
+
     const grid = createGrid();
     machineContainer.appendChild(grid);
     updateGrid();
+}
+
+function playStep() {
+    const cells = document.querySelectorAll(".cell");
+
+    // Remove previous highlight
+    cells.forEach((cell) => cell.classList.remove("playing"));
+
+    // Highlight current step column
+    for (let i = 0; i < gridSize; i++) {
+        const cell = document.querySelector(
+            `[data-row="${i}"][data-col="${currentStep}"]`
+        );
+        if (cell) {
+            cell.classList.add("playing");
+
+            // Play sound if cell is blocked
+            if (cell.classList.contains("block")) {
+                playNote(i);
+            }
+        }
+    }
+
+    // Move to next step
+    currentStep = (currentStep + 1) % gridSize;
+
+    // Schedule next step if still playing
+    if (isPlaying) {
+        sequencerTimeout = setTimeout(playStep, stepDuration);
+    }
+}
+
+function playNote(row) {
+    if (!audioContext) return;
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    // 16 different frequencies for different rows (C3 to C5) - REVERSED ORDER
+    const frequencies = [
+        587.33, // D5
+        523.25, // C5
+        493.88, // B4
+        440.0,  // A4
+        392.0,  // G4
+        349.23, // F4
+        329.63, // E4
+        293.66, // D4
+        261.63, // C4
+        246.94, // B3
+        220.0,  // A3
+        196.0,  // G3
+        174.61, // F3
+        164.81, // E3
+        146.83, // D3
+        130.81, // C3
+    ];
+    const frequency = frequencies[row] || 220;
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+    oscillator.type = "sine";
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.1
+    );
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+}
+
+function startSequencer() {
+    if (isPlaying) return;
+
+    // Initialize audio context if needed
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    isPlaying = true;
+
+    // Get BPM from input field
+    const bpmField = document.querySelector(".bpm-input input");
+    const bpm = parseInt(bpmField.value) || 120;
+    stepDuration = (60 / bpm) * 1000; // Convert BPM to milliseconds per step
+
+    // Start the sequencer loop
+    sequencerTimeout = setTimeout(playStep, stepDuration);
+}
+
+function stopSequencer() {
+    if (!isPlaying) return;
+
+    isPlaying = false;
+
+    if (sequencerTimeout) {
+        clearTimeout(sequencerTimeout);
+        sequencerTimeout = null;
+    }
+
+    // Remove all playing highlights
+    const cells = document.querySelectorAll(".cell");
+    cells.forEach((cell) => cell.classList.remove("playing"));
+}
+
+function changeTempo(newBpm) {
+    stepDuration = (60 / newBpm) * 1000;
+    // The next step will use the new tempo automatically
 }
 
 main();
