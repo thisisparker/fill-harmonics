@@ -47,6 +47,8 @@ function updateGrid() {
             }
         }
     });
+
+    window.location.hash = "";
 }
 
 function changeGridSize(newGridSize) {
