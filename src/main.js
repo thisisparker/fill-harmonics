@@ -153,14 +153,6 @@ function createGrid() {
 function createSliderComponents() {
     const sizeSliderContainer = document.createElement("div");
     sizeSliderContainer.classList.add("size-slider-container");
-    const computedCellSize = parseInt(
-        window
-            .getComputedStyle(document.documentElement)
-            .getPropertyValue("--cell-size"),
-        10
-    );
-    sizeSliderContainer.style.width = `${computedCellSize * gridSize}px`;
-    console.log("sizeSliderContainer", sizeSliderContainer.style.width);
 
     const sizeSlider = document.createElement("input");
     sizeSlider.id = "size-slider";
@@ -200,13 +192,17 @@ function main() {
     header.textContent = "drum fill: construct a beat";
     app.appendChild(header);
 
-    const interactivePanel = document.createElement("div");
-    interactivePanel.classList.add("interactive-panel");
-    app.appendChild(interactivePanel);
+    const machineContainer = document.createElement("div");
+    machineContainer.classList.add("machine-container");
+    app.appendChild(machineContainer);
+
+    const controlPanel = document.createElement("div");
+    controlPanel.classList.add("control-panel");
+    machineContainer.appendChild(controlPanel);
 
     const sizeSliderContainer = createSliderComponents();
 
-    interactivePanel.appendChild(sizeSliderContainer);
+    controlPanel.appendChild(sizeSliderContainer);
 
     const clearButton = document.createElement("button");
     clearButton.textContent = "clear blocks";
@@ -219,10 +215,10 @@ function main() {
         });
     });
 
-    interactivePanel.appendChild(clearButton);
+    controlPanel.appendChild(clearButton);
 
     const grid = createGrid();
-    interactivePanel.appendChild(grid);
+    machineContainer.appendChild(grid);
     updateGrid();
 }
 

@@ -1,69 +1,93 @@
 :root {
-  --grid-size: 8;
-  --cell-size: 40px;
+    --grid-size: 8;
+    --cell-size: 40px;
 }
 
-
 body {
-  font-family: monospace;
-  padding: 1rem;
+    font-family: monospace;
+    padding: 1rem;
 }
 
 h1 {
-  font-size: 1rem;
+    font-size: 1rem;
+}
+
+.machine-container {
+    display: flex;
+    flex-direction: row;
+    gap: 3rem;
 }
 
 .size-slider-container {
-  padding-bottom: 1rem;
+    grid-area: size-slider;
+    background-color: #fff;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
 
-  input {
-    width: 70%;
-  }
+    & input {
+        width: 70%;
+    }
+}
 
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.control-panel {
+    display: grid;
+    width: 320px;
+    grid-template-areas:
+        "size-slider size-slider size-slider"
+        ". . clear-button";
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 3rem 4rem;
+    height: min-content;
+    gap: 1px;
+    border: 1px solid #000;
+    padding: 1px;
 }
 
 .clear-button {
-  padding: 0.5rem 0;
-  background-color: #fff;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-  &:hover {
-    text-decoration: none;
-  }
-  font-family: monospace;
-  padding-bottom: 2rem;
+    grid-area: clear-button;
+    background-color: #fff;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 0.5rem;
+    box-sizing: border-box;
+
+    &:hover {
+        text-decoration: none;
+    }
 }
 
 .grid {
-  display: grid;
-  grid-auto-flow: row;
-  grid-template-rows: repeat(var(--grid-size), var(--cell-size));
-  grid-template-columns: repeat(var(--grid-size), var(--cell-size));
-  gap: 0;
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-rows: repeat(var(--grid-size), var(--cell-size));
+    grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+    gap: 0;
 }
 
 .cell {
-  height: var(--cell-size);
-  width: var(--cell-size);
-  border: 1px solid #000;
-  margin: 0;
-  position: relative;
+    height: var(--cell-size);
+    width: var(--cell-size);
+    border: 1px solid #000;
+    margin: 0;
+    position: relative;
 }
 
 .cell.block {
-  background-color: #000;
+    background-color: #000;
 }
 
 .cell::before {
-  content: attr(data-number);
-  position: absolute;
-  top: 0.125rem;
-  left: 0.125rem;
-  font-size: 0.75rem;
-  pointer-events: none;
-  user-select: none;
+    content: attr(data-number);
+    position: absolute;
+    top: 0.125rem;
+    left: 0.125rem;
+    font-size: 0.75rem;
+    pointer-events: none;
+    user-select: none;
 }
