@@ -324,20 +324,14 @@ function createCell(i, j) {
     // Move to previous cell on backspace if empty
     input.addEventListener("keydown", (e) => {
         if (e.key === "Backspace") {
-            if (cell.dataset.text !== "") {
-                // Clear the text in current cell
+            e.preventDefault();
+            cell.dataset.text = "";
+            const prevCell = getPrevEmptyCell(i, j);
+            const prevCellInput = prevCell.querySelector("input.cell-input");
+            if (prevCellInput) {
                 e.preventDefault();
-                cell.dataset.text = "";
-            } else {
-                // Move to previous empty cell
-                const prevCell = getPrevEmptyCell(i, j);
-                const prevCellInput =
-                    prevCell.querySelector("input.cell-input");
-                if (prevCellInput) {
-                    e.preventDefault();
-                    prevCellInput.focus();
-                    prevCellInput.select();
-                }
+                prevCellInput.focus();
+                prevCellInput.select();
             }
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
