@@ -55,11 +55,9 @@ function updateGrid() {
         cell.classList.remove("last-in-column");
         if (parseInt(cell.dataset.col) === gridSize - 1) {
             cell.classList.add("last-in-row");
-            console.log(`Added last-in-row to cell at row ${cell.dataset.row}, col ${cell.dataset.col}`);
         }
         if (parseInt(cell.dataset.row) === gridSize - 1) {
             cell.classList.add("last-in-column");
-            console.log(`Added last-in-column to cell at row ${cell.dataset.row}, col ${cell.dataset.col}`);
         }
     });
 
@@ -477,6 +475,7 @@ function createSliderComponents() {
     sizeSliderContainer.appendChild(sizeSlider);
     sizeSliderContainer.appendChild(sizeList);
     sizeSliderContainer.appendChild(sizeSliderLabel);
+
     return sizeSliderContainer;
 }
 
@@ -787,6 +786,11 @@ function playNote(row, time) {
 
 function startSequencer() {
     if (Tone.Transport.state === "started") return;
+
+    // this allows audio to play in iOS even then the hardware mute switch is on
+    if (navigator.audioSession) {
+        navigator.audioSession.type = "playback";
+    }
 
     // Start Tone.js audio context
     Tone.start();
