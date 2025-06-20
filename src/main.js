@@ -188,8 +188,9 @@ function clearBlocks() {
         cell.classList.remove("block");
     });
     // Clear saved states as well
-    for (let cell of cellStates) {
-        if (cellStates.get(cell) === ".") {
+    for (const [cell, state] of cellStates) {
+        console.log(cell);
+        if (state === ".") {
             cellStates.set(cell, "");
         }
     }
@@ -202,8 +203,8 @@ function clearText() {
         cell.dataset.text = "";
     });
     // Clear saved states as well
-    for (let cell of cellStates) {
-        if (/^[A-Z]$/.test(cellStates.get(cell))) {
+    for (const [cell, state] of cellStates) {
+        if (/^[A-Z]$/.test(state)) {
             cellStates.set(cell, "");
         }
     }
