@@ -14,6 +14,8 @@ function updateGrid() {
     const grid = document.querySelector(".grid");
     let number = 1;
 
+    console.log(`updateGrid called with gridSize: ${gridSize}`);
+
     const cells = grid.querySelectorAll(".cell");
     cells.forEach((cell) => {
         cell.dataset.number = "";
@@ -45,6 +47,19 @@ function updateGrid() {
                 number++;
                 break;
             }
+        }
+    });
+
+    cells.forEach((cell) => {
+        cell.classList.remove("last-in-row");
+        cell.classList.remove("last-in-column");
+        if (parseInt(cell.dataset.col) === gridSize - 1) {
+            cell.classList.add("last-in-row");
+            console.log(`Added last-in-row to cell at row ${cell.dataset.row}, col ${cell.dataset.col}`);
+        }
+        if (parseInt(cell.dataset.row) === gridSize - 1) {
+            cell.classList.add("last-in-column");
+            console.log(`Added last-in-column to cell at row ${cell.dataset.row}, col ${cell.dataset.col}`);
         }
     });
 
@@ -683,7 +698,10 @@ function main() {
     controlPanel.appendChild(shareButton);
 
     const grid = createGrid();
-    machineContainer.appendChild(grid);
+    const gridContainer = document.createElement("div");
+    gridContainer.classList.add("grid-container");
+    gridContainer.appendChild(grid);
+    machineContainer.appendChild(gridContainer);
 
     // Load state from URL hash if present
     loadStateFromHash();
