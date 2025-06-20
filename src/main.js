@@ -691,7 +691,6 @@ function main() {
     updateGrid();
 
     blocksToggleSwitch = toggleSwitch;
-    window.blocksToggleSwitch = toggleSwitch;
 
     // Initialize synths
     for (let i = 0; i < MAX_GRID_SIZE; i++) {
