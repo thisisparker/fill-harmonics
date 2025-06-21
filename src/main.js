@@ -14,8 +14,6 @@ function updateGrid() {
     const grid = document.querySelector(".grid");
     let number = 1;
 
-    console.log(`updateGrid called with gridSize: ${gridSize}`);
-
     const cells = grid.querySelectorAll(".cell");
     cells.forEach((cell) => {
         cell.dataset.number = "";
@@ -658,7 +656,9 @@ function main() {
     playButton.textContent = "play";
     playButton.classList.add("play-button");
     playButton.addEventListener("click", () => {
-        if (Tone.Transport.state === "started") {
+        // Check transport state only when clicked
+        const isPlaying = Tone.Transport.state === "started";
+        if (isPlaying) {
             stopSequencer();
             playButton.textContent = "play";
         } else {
@@ -708,26 +708,6 @@ function main() {
     updateGrid();
 
     blocksToggleSwitch = toggleSwitch;
-
-    // Initialize synths
-    for (let i = 0; i < MAX_GRID_SIZE; i++) {
-        synths.push(
-            new Tone.Synth({
-                oscillator: { type: "sine" },
-                envelope: {
-                    attack: 0.001,
-                    decay: 0.1,
-                    sustain: 0.1,
-                    release: 1.2,
-                },
-            }).toDestination()
-        );
-    }
-
-    // Initialize sequencer loop
-    sequencerLoop = new Tone.Loop((time) => {
-        playStep(time);
-    }, "8n");
 }
 
 function playStep(time) {
@@ -751,6 +731,9 @@ function playStep(time) {
         }
     }
 
+    const bpm = document.querySelector(".bpm-input input").value;
+    Tone.Transport.bpm.value = bpm;
+    
     // Move to next step
     currentStep = (currentStep + 1) % gridSize;
 }
@@ -792,13 +775,34 @@ function startSequencer() {
         navigator.audioSession.type = "playback";
     }
 
+    // Initialize synths if not already created
+    if (synths.length === 0) {
+        for (let i = 0; i < MAX_GRID_SIZE; i++) {
+            synths.push(
+                new Tone.Synth({
+                    oscillator: { type: "sine" },
+                    envelope: {
+                        attack: 0.001,
+                        decay: 0.1,
+                        sustain: 0.1,
+                        release: 1.2,
+                    },
+                }).toDestination()
+            );
+        }
+    }
+
+    // Initialize sequencer loop if not already created
+    if (!sequencerLoop) {
+        sequencerLoop = new Tone.Loop((time) => {
+            playStep(time);
+        }, "8n");
+    }
+
     // Start Tone.js audio context
     Tone.start();
 
-    // Get BPM from input field
-    const bpmField = document.querySelector(".bpm-input input");
-    const bpm = parseInt(bpmField.value) || 120;
-    Tone.Transport.bpm.value = bpm;
+
 
     // Start the sequencer loop if not already running
     if (!sequencerLoop.started) {
