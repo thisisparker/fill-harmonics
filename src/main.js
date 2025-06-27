@@ -542,13 +542,10 @@ function encodeGridState() {
             );
             if (cell.classList.contains("block")) {
                 gridString += "_";
+            } else if (cell.dataset.text) {
+                gridString += cell.dataset.text;
             } else {
-                let val = cell.dataset.text || "";
-                if (val && /^[A-Z]$/.test(val)) {
-                    gridString += val;
-                } else {
-                    gridString += "~";
-                }
+                gridString += "-";
             }
         }
     }
@@ -665,8 +662,8 @@ function loadStateFromQueries() {
             if (ch === "." || ch === "_") {
                 cell.classList.add("block");
             } else if (ch === "-" || ch === "~") {
-                // nothing
-            } else if (/^[A-Z]$/.test(ch)) {
+                continue;
+            } else {
                 cell.dataset.text = ch;
             }
         }
