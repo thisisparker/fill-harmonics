@@ -113,8 +113,6 @@ function updateGrid() {
             cell.classList.add("last-in-column");
         }
     });
-
-    window.location.hash = "";
 }
 
 function changeGridSize(newGridSize) {
@@ -379,7 +377,6 @@ function createCell(i, j) {
         }
     });
 
-    // Move to previous cell on backspace if empty
     input.addEventListener("keydown", (e) => {
         if (e.key === "Backspace") {
             e.preventDefault();
@@ -533,61 +530,82 @@ function createSliderComponents() {
 }
 
 function encodeGridState() {
-    // Build a compact string representation
-    let rows = [];
+    // Build query string parameters
+    let params = new URLSearchParams();
+
+    // Encode grid state as a simple string
+    let gridString = "";
     for (let i = 0; i < gridSize; i++) {
-        let row = "";
         for (let j = 0; j < gridSize; j++) {
             const cell = document.querySelector(
                 `[data-row="${i}"][data-col="${j}"]`
             );
             if (cell.classList.contains("block")) {
-                row += ".";
+                gridString += ".";
             } else {
                 let val = cell.dataset.text || "";
                 if (val && /^[A-Z]$/.test(val)) {
-                    row += val;
+                    gridString += val;
                 } else {
-                    row += "-";
+                    gridString += "-";
                 }
             }
         }
-        rows.push(row);
     }
+
+    params.set("grid", gridString);
+    params.set("size", gridSize.toString());
+
     const bpmField = document.querySelector(".bpm-input input");
     const bpm = bpmField ? parseInt(bpmField.value) || 120 : 120;
-    const state = {
-        grid: rows.join("\n"),
-        bpm: bpm,
-    };
-    return btoa(JSON.stringify(state));
+    params.set("bpm", bpm.toString());
+
+    // Add entry mode (blocks/text)
+    const entryMode =
+        blocksToggleSwitch && !blocksToggleSwitch.checked ? "text" : "blocks";
+    params.set("entry", entryMode);
+
+    // Add playback mode (blocks/poly)
+    params.set("play", playMode);
+
+    return params.toString();
 }
 
-function decodeGridState(hash) {
+function decodeGridState(searchString) {
     try {
-        const decoded = JSON.parse(atob(hash));
-        return decoded;
+        const params = new URLSearchParams(searchString);
+        return {
+            grid: params.get("grid"),
+            size: parseInt(params.get("size")) || INITIAL_GRID_SIZE,
+            bpm: parseInt(params.get("bpm")) || 120,
+            entry: params.get("entry") || "blocks",
+            play: params.get("play") || "blocks",
+        };
     } catch (e) {
-        console.warn("Invalid hash format:", e);
+        console.warn("Invalid query string format:", e);
         return null;
     }
 }
 
-function loadStateFromHash() {
-    const hash = window.location.hash.slice(1); // Remove the # symbol
-    if (!hash) return;
+function loadStateFromQueries() {
+    const searchString = window.location.search.slice(1); // Remove the ? symbol
+    if (!searchString) return;
 
-    const state = decodeGridState(hash);
+    const state = decodeGridState(searchString);
     if (!state || !state.grid) return;
-    const rows = state.grid.split("\n");
+
+    const gridString = state.grid;
+    const gridSizeFromState = state.size;
 
     // Set grid size
-    const newSize = rows.length;
-    if (newSize >= INITIAL_GRID_SIZE && newSize <= MAX_GRID_SIZE) {
-        changeGridSize(newSize);
+    if (
+        gridSizeFromState >= INITIAL_GRID_SIZE &&
+        gridSizeFromState <= MAX_GRID_SIZE
+    ) {
+        changeGridSize(gridSizeFromState);
         const sizeSlider = document.getElementById("size-slider");
         if (sizeSlider) {
-            sizeSlider.value = newSize;
+            sizeSlider.value = gridSizeFromState;
         }
     }
 
@@ -599,6 +617,31 @@ function loadStateFromHash() {
         }
     }
 
+    // Set entry mode (blocks/text)
+    if (state.entry && blocksToggleSwitch) {
+        const shouldBeTextMode = state.entry === "text";
+        if (blocksToggleSwitch.checked === shouldBeTextMode) {
+            blocksToggleSwitch.checked = !shouldBeTextMode;
+            // Trigger the change event to update UI
+            blocksToggleSwitch.dispatchEvent(new Event("change"));
+        }
+    }
+
+    // Set playback mode (blocks/poly)
+    if (state.play) {
+        const playModeToggle = document.querySelector(
+            '.play-mode-container input[type="checkbox"]'
+        );
+        if (playModeToggle) {
+            const shouldBePolyMode = state.play === "poly";
+            if (playModeToggle.checked === shouldBePolyMode) {
+                playModeToggle.checked = !shouldBePolyMode;
+                // Trigger the change event to update UI
+                playModeToggle.dispatchEvent(new Event("change"));
+            }
+        }
+    }
+
     // Clear all blocks and text
     const cells = document.querySelectorAll(".cell");
     cells.forEach((cell) => {
@@ -606,14 +649,19 @@ function loadStateFromHash() {
         cell.dataset.text = "";
     });
 
-    // Apply state from rows
-    for (let i = 0; i < rows.length; i++) {
-        for (let j = 0; j < rows[i].length; j++) {
-            const ch = rows[i][j];
+    // Apply state from grid string
+    const charsPerRow = gridSize;
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < charsPerRow; j++) {
+            const charIndex = i * charsPerRow + j;
+            if (charIndex >= gridString.length) break;
+
+            const ch = gridString[charIndex];
             const cell = document.querySelector(
                 `[data-row="${i}"][data-col="${j}"]`
             );
             if (!cell) continue;
+
             if (ch === ".") {
                 cell.classList.add("block");
             } else if (ch === "-") {
@@ -623,11 +671,9 @@ function loadStateFromHash() {
             }
         }
     }
-}
 
-function updateURLHash() {
-    const encodedState = encodeGridState();
-    window.location.hash = encodedState;
+    // Clear the query strings from the URL after loading
+    window.history.replaceState({}, "", window.location.pathname);
 }
 
 function main() {
@@ -749,11 +795,17 @@ function main() {
     shareButton.textContent = "share this grid";
     shareButton.classList.add("share-button");
     shareButton.addEventListener("click", async () => {
-        updateURLHash();
+        // Generate the URL with current state
+        const queryString = encodeGridState();
+        const shareUrl =
+            window.location.origin +
+            window.location.pathname +
+            "?" +
+            queryString;
 
         // Copy the URL to clipboard
         try {
-            await navigator.clipboard.writeText(window.location.href);
+            await navigator.clipboard.writeText(shareUrl);
             // Show success message
             const originalText = shareButton.textContent;
             shareButton.textContent = "link copied!";
@@ -780,7 +832,7 @@ function main() {
     machineContainer.appendChild(gridContainer);
 
     // Load state from URL hash if present
-    loadStateFromHash();
+    loadStateFromQueries();
 
     updateGrid();
 
