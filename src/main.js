@@ -669,9 +669,16 @@ function main() {
     playModeToggle.classList.add("toggle-switch");
 
     playModeToggle.addEventListener("change", () => {
-        playModeLabel.textContent = playModeToggle.checked ? "block play mode" : "poly play mode";
-        playMode = playModeToggle.checked ? "blocks" : "poly";
-    })
+        if (playModeToggle.checked) {
+            playModeLabel.textContent = "block play mode";
+            playMode = "blocks";
+            currentStep = currentStep % gridSize;
+        } else {
+            playModeLabel.textContent = "poly play mode";
+            playMode = "poly";
+            currentStep = currentStep % acrossWords.length;
+        }
+    });
 
     playModeContainer.appendChild(playModeToggle);
 
@@ -689,7 +696,9 @@ function main() {
     toggleSwitch.classList.add("toggle-switch");
 
     toggleSwitch.addEventListener("change", () => {
-        toggleLabel.textContent = toggleSwitch.checked ? "block entry" : "text entry";
+        toggleLabel.textContent = toggleSwitch.checked
+            ? "block entry"
+            : "text entry";
         if (toggleSwitch.checked) {
             clearButton.textContent = "clear blocks";
             clearButton.removeEventListener("click", clearText);
@@ -726,9 +735,7 @@ function main() {
     playButton.textContent = "play";
     playButton.classList.add("play-button");
     playButton.addEventListener("click", () => {
-        // Check transport state only when clicked
-        const isPlaying = Tone.Transport.state === "started";
-        if (isPlaying) {
+        if (Tone.Transport.state === "started") {
             stopSequencer();
             playButton.textContent = "play";
         } else {
@@ -799,6 +806,9 @@ function playStep(time) {
             if (cell.classList.contains("block")) {
                 playNote(i, time);
             }
+        }
+        if (currentStep >= gridSize) {
+            currentStep = 0;
         }
     } else if (playMode === "poly") {
         acrossWords.forEach((word) => {
@@ -893,10 +903,6 @@ function stopSequencer() {
     // Remove all playing highlights
     const cells = document.querySelectorAll(".cell");
     cells.forEach((cell) => cell.classList.remove("playing"));
-}
-
-function changeTempo(newBpm) {
-    Tone.Transport.bpm.value = newBpm;
 }
 
 function updateInputFocusability() {
