@@ -133,18 +133,11 @@ h1 {
     background-color: #000;
 }
 
-.cell.playing {
+.cell.active {
     background-color: #ff6b6b;
-    border-top: 2px solid #ff0000;
-    border-left: 2px solid #ff0000;
 }
 
-.grid:last-child.playing {
-    border-bottom: 2px solid #ff0000;
-    border-right: 2px solid #ff0000;
-}
-
-.cell.block.playing {
+.cell.playing {
     background-color: #ff0000;
 }
 
@@ -230,7 +223,7 @@ h1 {
 }
 
 .toggle-switch::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 3px;
     top: 3px;
@@ -239,7 +232,7 @@ h1 {
     background: #fff;
     border-radius: 50%;
     transition: transform 0.2s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-switch:checked::before {

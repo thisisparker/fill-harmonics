@@ -838,7 +838,10 @@ function playStep(time) {
     const cells = document.querySelectorAll(".cell");
 
     // Remove previous highlight
-    cells.forEach((cell) => cell.classList.remove("playing"));
+    cells.forEach((cell) => {
+        cell.classList.remove("playing");
+        cell.classList.remove("active");
+    });
 
     // Highlight current step column and schedule notes
 
@@ -848,7 +851,7 @@ function playStep(time) {
                 `[data-row="${i}"][data-col="${currentStep % gridSize}"]`
             );
 
-            cell.classList.add("playing");
+            cell.classList.add("active");
 
             // Schedule note if cell is blocked
             if (cell.classList.contains("block")) {
@@ -865,7 +868,7 @@ function playStep(time) {
                 `[data-col="${cellCoords[0]}"][data-row="${cellCoords[1]}"]`
             );
 
-            cell.classList.add("playing");
+            cell.classList.add("active");
 
             if (cell.dataset.text.length > 0) {
                 playNote(cell, time);
@@ -882,6 +885,8 @@ function playStep(time) {
 
 function playNote(cell, time) {
     if (!synths[cell.dataset.row]) return;
+
+    cell.classList.add("playing");
 
     const note = notes[cell.dataset.row] || "A3";
 
@@ -948,7 +953,10 @@ function stopSequencer() {
 
     // Remove all playing highlights
     const cells = document.querySelectorAll(".cell");
-    cells.forEach((cell) => cell.classList.remove("playing"));
+    cells.forEach((cell) => {
+        cell.classList.remove("playing");
+        cell.classList.remove("active");
+    });
 }
 
 function updateInputFocusability() {
