@@ -9,10 +9,65 @@ let sequencerLoop = null;
 let currentStep = 0;
 let blocksToggleSwitch;
 let synths = []; // Array of synths, one for each row
+let acrossWords = [];
+let playMode = "blocks";
+
+const notes = [
+    "C6",
+    "A5",
+    "G5",
+    "E5",
+    "D5",
+    "C5",
+    "B4",
+    "A4",
+    "G4",
+    "E4",
+    "D4",
+    "C4",
+    "A3",
+    "G3",
+    "E3",
+    "D3",
+    "C3",
+];
+
+function getAcrossWords() {
+    const cells = document.querySelectorAll(".cell");
+    acrossWords = [];
+    let currentWord = [];
+
+    cells.forEach((cell) => {
+        let coords = [parseInt(cell.dataset.col), parseInt(cell.dataset.row)];
+        if (cell.classList.contains("block")) {
+            return;
+        } else if (
+            coords[0] === 0 ||
+            document
+                .querySelector(
+                    `[data-row="${coords[1]}"][data-col="${coords[0] - 1}"]`
+                )
+                .classList.contains("block")
+        ) {
+            if (currentWord.length > 0) {
+                acrossWords.push(currentWord);
+            }
+            currentWord = [coords];
+        } else {
+            currentWord.push(coords);
+        }
+    });
+
+    acrossWords.push(currentWord);
+
+    console.log(acrossWords);
+}
 
 function updateGrid() {
     const grid = document.querySelector(".grid");
     let number = 1;
+
+    getAcrossWords();
 
     const cells = grid.querySelectorAll(".cell");
     cells.forEach((cell) => {
@@ -541,7 +596,6 @@ function loadStateFromHash() {
         const bpmField = document.querySelector(".bpm-input input");
         if (bpmField) {
             bpmField.value = state.bpm;
-            changeTempo(state.bpm);
         }
     }
 
@@ -601,13 +655,33 @@ function main() {
 
     controlPanel.appendChild(clearButton);
 
+    const playModeContainer = document.createElement("div");
+    playModeContainer.classList.add("play-mode-container");
+    controlPanel.appendChild(playModeContainer);
+
+    const playModeLabel = document.createElement("label");
+    playModeLabel.textContent = "block play mode";
+    playModeContainer.appendChild(playModeLabel);
+
+    const playModeToggle = document.createElement("input");
+    playModeToggle.type = "checkbox";
+    playModeToggle.checked = true;
+    playModeToggle.classList.add("toggle-switch");
+
+    playModeToggle.addEventListener("change", () => {
+        playModeLabel.textContent = playModeToggle.checked ? "block play mode" : "poly play mode";
+        playMode = playModeToggle.checked ? "blocks" : "poly";
+    })
+
+    playModeContainer.appendChild(playModeToggle);
+
     // Toggle switch for blocks/text
     const toggleContainer = document.createElement("div");
     toggleContainer.classList.add("toggle-container");
 
     const toggleLabel = document.createElement("label");
     toggleLabel.classList.add("toggle-label");
-    toggleLabel.textContent = "blocks";
+    toggleLabel.textContent = "block entry";
 
     const toggleSwitch = document.createElement("input");
     toggleSwitch.type = "checkbox";
@@ -615,7 +689,7 @@ function main() {
     toggleSwitch.classList.add("toggle-switch");
 
     toggleSwitch.addEventListener("change", () => {
-        toggleLabel.textContent = toggleSwitch.checked ? "blocks" : "text";
+        toggleLabel.textContent = toggleSwitch.checked ? "block entry" : "text entry";
         if (toggleSwitch.checked) {
             clearButton.textContent = "clear blocks";
             clearButton.removeEventListener("click", clearText);
@@ -643,10 +717,6 @@ function main() {
     bpmField.min = "60";
     bpmField.max = "200";
     bpmField.value = "120";
-    bpmField.addEventListener("input", (event) => {
-        const newBpm = parseInt(event.target.value) || 120;
-        changeTempo(newBpm);
-    });
 
     bpmInput.appendChild(bpmLabel);
     bpmInput.appendChild(bpmField);
@@ -717,11 +787,12 @@ function playStep(time) {
     cells.forEach((cell) => cell.classList.remove("playing"));
 
     // Highlight current step column and schedule notes
-    for (let i = 0; i < gridSize; i++) {
-        const cell = document.querySelector(
-            `[data-row="${i}"][data-col="${currentStep}"]`
-        );
-        if (cell) {
+
+    if (playMode === "blocks") {
+        for (let i = 0; i < gridSize; i++) {
+            const cell = document.querySelector(
+                `[data-row="${i}"][data-col="${currentStep % gridSize}"]`
+            );
             cell.classList.add("playing");
 
             // Schedule note if cell is blocked
@@ -729,38 +800,38 @@ function playStep(time) {
                 playNote(i, time);
             }
         }
+    } else if (playMode === "poly") {
+        acrossWords.forEach((word) => {
+            const cellCoords = word[currentStep % word.length];
+            const cell = document.querySelector(
+                `[data-col="${cellCoords[0]}"][data-row="${cellCoords[1]}"]`
+            );
+            cell.classList.add("playing");
+            playWordNote(cell, time);
+        });
     }
 
     const bpm = document.querySelector(".bpm-input input").value;
     Tone.Transport.bpm.value = bpm;
-    
+
     // Move to next step
-    currentStep = (currentStep + 1) % gridSize;
+    currentStep = currentStep + 1;
+}
+
+function playWordNote(cell, time) {
+    if (cell.dataset.text.length > 0) {
+        console.log(cell.dataset.text);
+        synths[parseInt(cell.dataset.row)].triggerAttackRelease(
+            notes[parseInt(cell.dataset.row)],
+            "16n",
+            time
+        );
+    }
 }
 
 function playNote(row, time) {
     if (!synths[row]) return;
 
-    // 16 different notes for different rows (pentatonic C3 to C6)
-    const notes = [
-        "C6",
-        "A5",
-        "G5",
-        "E5",
-        "D5",
-        "C5",
-        "B4",
-        "A4",
-        "G4",
-        "E4",
-        "D4",
-        "C4",
-        "A3",
-        "G3",
-        "E3",
-        "D3",
-        "C3",
-    ];
     const note = notes[row] || "A3";
 
     // Schedule the note at the precise time
@@ -776,6 +847,7 @@ function startSequencer() {
     }
 
     // Initialize synths if not already created
+    // TODO: we may need more synths for poly mode
     if (synths.length === 0) {
         for (let i = 0; i < MAX_GRID_SIZE; i++) {
             synths.push(
@@ -801,8 +873,6 @@ function startSequencer() {
 
     // Start Tone.js audio context
     Tone.start();
-
-
 
     // Start the sequencer loop if not already running
     if (!sequencerLoop.started) {
