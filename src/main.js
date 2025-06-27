@@ -59,8 +59,6 @@ function getAcrossWords() {
     });
 
     acrossWords.push(currentWord);
-
-    console.log(acrossWords);
 }
 
 function updateGrid() {
@@ -849,11 +847,12 @@ function playStep(time) {
             const cell = document.querySelector(
                 `[data-row="${i}"][data-col="${currentStep % gridSize}"]`
             );
+
             cell.classList.add("playing");
 
             // Schedule note if cell is blocked
             if (cell.classList.contains("block")) {
-                playNote(i, time);
+                playNote(cell, time);
             }
         }
         if (currentStep >= gridSize) {
@@ -865,8 +864,12 @@ function playStep(time) {
             const cell = document.querySelector(
                 `[data-col="${cellCoords[0]}"][data-row="${cellCoords[1]}"]`
             );
+
             cell.classList.add("playing");
-            playWordNote(cell, time);
+
+            if (cell.dataset.text.length > 0) {
+                playNote(cell, time);
+            }
         });
     }
 
@@ -877,24 +880,13 @@ function playStep(time) {
     currentStep = currentStep + 1;
 }
 
-function playWordNote(cell, time) {
-    if (cell.dataset.text.length > 0) {
-        console.log(cell.dataset.text);
-        synths[parseInt(cell.dataset.row)].triggerAttackRelease(
-            notes[parseInt(cell.dataset.row)],
-            "16n",
-            time
-        );
-    }
-}
+function playNote(cell, time) {
+    if (!synths[cell.dataset.row]) return;
 
-function playNote(row, time) {
-    if (!synths[row]) return;
-
-    const note = notes[row] || "A3";
+    const note = notes[cell.dataset.row] || "A3";
 
     // Schedule the note at the precise time
-    synths[row].triggerAttackRelease(note, "16n", time);
+    synths[cell.dataset.row].triggerAttackRelease(note, "16n", time);
 }
 
 function startSequencer() {
@@ -945,6 +937,11 @@ function startSequencer() {
 function stopSequencer() {
     if (Tone.Transport.state === "stopped" || Tone.Transport.state === "paused")
         return;
+
+    // Stop the sequencer loop
+    if (sequencerLoop && sequencerLoop.started) {
+        sequencerLoop.stop();
+    }
 
     // Pause the transport (preserves position)
     Tone.Transport.pause();
