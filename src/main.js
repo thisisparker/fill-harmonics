@@ -11,6 +11,7 @@ let blocksToggleSwitch;
 let synths = []; // Array of synths, one for each row
 let acrossWords = [];
 let playMode = "blocks";
+let kickSynth = null
 
 const notes = [
     "C6",
@@ -871,7 +872,11 @@ function playStep(time) {
             cell.classList.add("active");
 
             if (cell.dataset.text.length > 0) {
-                playNote(cell, time);
+                if (cell.dataset.text === "K") {
+                    playKick(cell, time)
+                } else {
+                    playNote(cell, time);
+                }
             }
         });
     }
@@ -881,6 +886,13 @@ function playStep(time) {
 
     // Move to next step
     currentStep = currentStep + 1;
+}
+
+function playKick(cell, time) {
+    cell.classList.add("playing")
+
+    kickSynth.triggerAttackRelease("C2", "16n", time)
+
 }
 
 function playNote(cell, time) {
@@ -908,16 +920,20 @@ function startSequencer() {
         for (let i = 0; i < MAX_GRID_SIZE; i++) {
             synths.push(
                 new Tone.Synth({
-                    oscillator: { type: "sine" },
+                    oscillator: { type: "fatsawtooth" },
                     envelope: {
                         attack: 0.001,
                         decay: 0.1,
                         sustain: 0.1,
-                        release: 1.2,
+                        release: 0.5,
                     },
                 }).toDestination()
             );
         }
+    }
+
+    if (!kickSynth) {
+        kickSynth = new Tone.MembraneSynth().toDestination()
     }
 
     // Initialize sequencer loop if not already created
