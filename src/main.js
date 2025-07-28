@@ -676,7 +676,7 @@ function main() {
     const app = document.getElementById("app");
 
     const header = document.createElement("h1");
-    header.textContent = "drum fill: construct a beat";
+    header.textContent = "fill harmonics: construct a beat";
     app.appendChild(header);
 
     const machineContainer = document.createElement("div");
