@@ -9,9 +9,17 @@ let sequencerLoop = null;
 let currentStep = 0;
 let blocksToggleSwitch;
 let synths = []; // Array of synths, one for each row
+let kickSynth = null;
+let snareSynth = null;
+let hiHatSynth = null;
 let acrossWords = [];
-let playMode = "blocks";
-let kickSynth = null
+let lastTriggerTime = 0;
+let triggerCounter = 0;
+const playModes = Object.freeze({
+    grid: 'grid',
+    word: 'word'
+})
+let playMode = playModes.grid;
 
 const notes = [
     "C6",
@@ -349,8 +357,7 @@ function createCell(i, j) {
             const i = parseInt(cell.dataset.row);
             const j = parseInt(cell.dataset.col);
             const symmetricCell = document.querySelector(
-                `[data-row="${gridSize - i - 1}"][data-col="${
-                    gridSize - j - 1
+                `[data-row="${gridSize - i - 1}"][data-col="${gridSize - j - 1
                 }"]`
             );
 
@@ -433,8 +440,7 @@ function createCell(i, j) {
             const i = parseInt(cell.dataset.row);
             const j = parseInt(cell.dataset.col);
             const symmetricCell = document.querySelector(
-                `[data-row="${gridSize - i - 1}"][data-col="${
-                    gridSize - j - 1
+                `[data-row="${gridSize - i - 1}"][data-col="${gridSize - j - 1
                 }"]`
             );
 
@@ -561,7 +567,7 @@ function encodeGridState() {
         blocksToggleSwitch && !blocksToggleSwitch.checked ? "text" : "blocks";
     params.set("entry", entryMode);
 
-    // Add playback mode (blocks/poly)
+    // Add playback mode (grid/word)
     params.set("play", playMode);
 
     return params.toString();
@@ -623,15 +629,15 @@ function loadStateFromQueries() {
         }
     }
 
-    // Set playback mode (blocks/poly)
+    // Set playback mode (grid/word)
     if (state.play) {
         const playModeToggle = document.querySelector(
             '.play-mode-container input[type="checkbox"]'
         );
         if (playModeToggle) {
-            const shouldBePolyMode = state.play === "poly";
-            if (playModeToggle.checked === shouldBePolyMode) {
-                playModeToggle.checked = !shouldBePolyMode;
+            const shouldBeWordMode = state.play === playModes.word;
+            if (playModeToggle.checked === shouldBeWordMode) {
+                playModeToggle.checked = !shouldBeWordMode;
                 // Trigger the change event to update UI
                 playModeToggle.dispatchEvent(new Event("change"));
             }
@@ -702,7 +708,7 @@ function main() {
     controlPanel.appendChild(playModeContainer);
 
     const playModeLabel = document.createElement("label");
-    playModeLabel.textContent = "block play mode";
+    playModeLabel.textContent = "grid play mode";
     playModeContainer.appendChild(playModeLabel);
 
     const playModeToggle = document.createElement("input");
@@ -712,12 +718,12 @@ function main() {
 
     playModeToggle.addEventListener("change", () => {
         if (playModeToggle.checked) {
-            playModeLabel.textContent = "block play mode";
-            playMode = "blocks";
+            playModeLabel.textContent = "grid play mode";
+            playMode = playModes.grid;
             currentStep = currentStep % gridSize;
         } else {
-            playModeLabel.textContent = "poly play mode";
-            playMode = "poly";
+            playModeLabel.textContent = "word play mode";
+            playMode = playModes.word;
             currentStep = currentStep % acrossWords.length;
         }
     });
@@ -843,41 +849,26 @@ function playStep(time) {
         cell.classList.remove("playing");
         cell.classList.remove("active");
     });
-
     // Highlight current step column and schedule notes
 
-    if (playMode === "blocks") {
+    if (playMode === playModes.grid) {
+        if (currentStep >= gridSize) {
+            currentStep = 0;
+        }
         for (let i = 0; i < gridSize; i++) {
             const cell = document.querySelector(
                 `[data-row="${i}"][data-col="${currentStep % gridSize}"]`
             );
-
-            cell.classList.add("active");
-
-            // Schedule note if cell is blocked
-            if (cell.classList.contains("block")) {
-                playNote(cell, time);
-            }
+            handleCell(cell, time);
         }
-        if (currentStep >= gridSize) {
-            currentStep = 0;
-        }
-    } else if (playMode === "poly") {
+    } else if (playMode === playModes.word) {
         acrossWords.forEach((word) => {
             const cellCoords = word[currentStep % word.length];
             const cell = document.querySelector(
                 `[data-col="${cellCoords[0]}"][data-row="${cellCoords[1]}"]`
             );
 
-            cell.classList.add("active");
-
-            if (cell.dataset.text.length > 0) {
-                if (cell.dataset.text === "K") {
-                    playKick(cell, time)
-                } else {
-                    playNote(cell, time);
-                }
-            }
+            handleCell(cell, time)
         });
     }
 
@@ -888,17 +879,43 @@ function playStep(time) {
     currentStep = currentStep + 1;
 }
 
-function playKick(cell, time) {
-    cell.classList.add("playing")
+function handleCell(cell, time) {
+    cell.classList.add("active");
 
-    kickSynth.triggerAttackRelease("C2", "16n", time)
+    // Add a small offset to prevent "same time" errors
+    // Use a counter to ensure unique times even for multiple simultaneous triggers
+    if (time === lastTriggerTime) {
+        triggerCounter++;
+    } else {
+        triggerCounter = 0;
+    }
+    const triggerTime = time + (triggerCounter * 0.0001);
+    lastTriggerTime = time;
 
+    if (playMode === playModes.grid && cell.classList.contains("block")) {
+        cell.classList.add("playing");
+        playNote(cell, triggerTime);
+    } else if (cell.dataset.text === 'K') {
+        cell.classList.add("playing");
+        kickSynth.triggerAttackRelease("C2", "16n", triggerTime);
+    } else if (cell.dataset.text === 'S') {
+        cell.classList.add("playing");
+        snareSynth.triggerAttackRelease("C4", "16n", triggerTime);
+        // Also trigger the noise layer for the snare crack
+        if (snareSynth.noiseLayer) {
+            snareSynth.noiseLayer.triggerAttackRelease("16n", triggerTime + 0.0001);
+        }
+    } else if (cell.dataset.text === 'H') {
+        cell.classList.add("playing");
+        hiHatSynth.triggerAttackRelease("16n", triggerTime);
+    } else if (playMode === playModes.word && cell.dataset.text) {
+        cell.classList.add("playing")
+        playNote(cell, triggerTime)
+    }
 }
 
 function playNote(cell, time) {
     if (!synths[cell.dataset.row]) return;
-
-    cell.classList.add("playing");
 
     const note = notes[cell.dataset.row] || "A3";
 
@@ -933,8 +950,61 @@ function startSequencer() {
     }
 
     if (!kickSynth) {
-        kickSynth = new Tone.MembraneSynth().toDestination()
+        kickSynth = new Tone.PolySynth(Tone.MembraneSynth).toDestination()
+        kickSynth.set({maxPolyphony: 4})
     }
+
+    if (!snareSynth) {
+        // Create a proper snare sound by layering noise and a pitched oscillator
+        snareSynth = new Tone.PolySynth(Tone.Synth, {
+            frequency: 80,
+            volume: -15,
+            oscillator: {
+                type: "triangle"
+            },
+            envelope: {
+                attack: 0.001,
+                decay: 0.2,
+                sustain: 0,
+                release: 0.1,
+            }
+        }).toDestination();
+
+        // Add a noise layer for the snare "crack"
+        const snareNoise = new Tone.NoiseSynth({
+            noise: { type: "white" },
+            envelope: {
+                attack: 0.001,
+                decay: 0.1,
+                sustain: 0,
+                release: 0.05,
+            }
+        }).toDestination();
+
+        // Store both synths in the snareSynth object
+        snareSynth.noiseLayer = snareNoise;
+        snareSynth.set({maxPolyphony: 4});
+    }
+
+    console.log(snareSynth)
+
+    const reverb = new Tone.Reverb({ decay: 0.5, wet: 0.2 }).toDestination();
+
+    if (!hiHatSynth) {
+        hiHatSynth = new Tone.PolySynth(Tone.MetalSynth, {
+            frequency: 400,
+            envelope: {
+                attack: 0.005,
+                decay: 0.2,
+            },
+            harmonicity: 100,
+            modulationIndex: 80,
+            resonance: 7000,
+            octaves: 1.5
+        }).connect(reverb)
+    };
+
+    hiHatSynth.set({maxPolyphony: 4});
 
     // Initialize sequencer loop if not already created
     if (!sequencerLoop) {
