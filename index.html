@@ -1,13 +1,51 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>fill harmonics: construct a beat</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>fill harmonics: construct a beat</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <style>
+    #info-modal.hidden {
+      visibility: hidden;
+    }
+  </style>
+  <div id="info-modal" class="hidden">
+    <div class="modal-content">
+      <button class="close-button">×</button>
+      <p>fill harmonics is a crossword-themed music machine built by parker higgins and natan last.</p>
+      <p>natan has written a book about crosswords, coming out in november. pre-order now!</p>
+    </div>
+  </div>
+  <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+  <script type="module" src="/src/main.js"></script>
+  <script>
+    showModal = document.createElement("div")
+    showModal.id = "show-modal"
+    showModal.innerHTML = "?"
+    document.body.appendChild(showModal)
+    infoModal = document.querySelector("#info-modal")
+    showModal.addEventListener("click", () => {
+      infoModal.classList.toggle("hidden")
+    });
+
+    // Add close button functionality
+    const closeButton = document.querySelector(".close-button")
+    closeButton.addEventListener("click", () => {
+      infoModal.classList.add("hidden")
+    });
+
+    // Close modal when clicking outside content
+    infoModal.addEventListener("click", (e) => {
+      if (e.target === infoModal) {
+        infoModal.classList.add("hidden")
+      }
+    });
+  </script>
+</body>
+
 </html>
