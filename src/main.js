@@ -8,10 +8,10 @@ let cellStates = new Map(); // Store cell states as "row,col" -> text or '.'
 let sequencerLoop = null;
 let currentStep = 0;
 let blocksToggleSwitch;
-let synths = []; // Array of synths, one for each row
-let kickPlayer = null;
-let snarePlayer = null;
-let hiHatPlayer = null;
+let synths = initializeSynths('sine')
+let kickPlayer = new Tone.Player("bassdrumBD0075.WAV").toDestination();
+let snarePlayer = new Tone.Player("snareSD7550.WAV").toDestination();
+let hiHatPlayer = new Tone.Player("openhatOH10.WAV").toDestination();
 let acrossWords = [];
 let timeOffset = 0;
 const playModes = Object.freeze({
@@ -39,6 +39,37 @@ const notes = [
     "D3",
     "C3",
 ];
+
+const synthModes = [
+    "sine",
+    "square",
+    "triangle",
+    "sawtooth",
+    "fatsine",
+    "fatsquare",
+    "fattriangle",
+    "fatsawtooth",
+]
+
+function initializeSynths(mode) {
+    let newSynths = [];
+
+    for (let i = 0; i < MAX_GRID_SIZE; i++) {
+        newSynths.push(
+            new Tone.Synth({
+                oscillator: { type: mode },
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.1,
+                    sustain: 0.1,
+                    release: 0.5,
+                },
+            }).toDestination()
+        );
+    }
+
+    return newSynths;
+}
 
 function getAcrossWords() {
     const cells = document.querySelectorAll(".cell");
@@ -578,6 +609,11 @@ function encodeGridState() {
         blocksToggleSwitch && !blocksToggleSwitch.checked ? "text" : "blocks";
     params.set("entry", entryMode);
 
+    const synthModeMenu = document.querySelector(".synth-mode-menu")
+
+    const synthMode = synthModeMenu.value;
+    params.set("synth", synthMode)
+
     // Add playback mode (grid/word)
     params.set("play", playMode);
 
@@ -592,6 +628,7 @@ function decodeGridState(searchString) {
             size: parseInt(params.get("size")) || INITIAL_GRID_SIZE,
             bpm: parseInt(params.get("bpm")) || 120,
             entry: params.get("entry") || "blocks",
+            synth: params.get("synth") || "sine",
             play: params.get("play") || "blocks",
         };
     } catch (e) {
@@ -638,6 +675,14 @@ function loadStateFromQueries() {
             // Trigger the change event to update UI
             blocksToggleSwitch.dispatchEvent(new Event("change"));
         }
+    }
+
+    // Set synth mode
+    const synthModeMenu = document.querySelector(".synth-mode-menu")
+
+    if (state.synth && synthModeMenu) {
+        synthModeMenu.value = state.synth;
+        synthModeMenu.dispatchEvent(new Event("change"));
     }
 
     // Set playback mode (grid/word)
@@ -740,6 +785,27 @@ function main() {
     });
 
     playModeContainer.appendChild(playModeToggle);
+
+    const synthModeContainer = document.createElement("div");
+    synthModeContainer.classList.add("synth-mode-container");
+    controlPanel.appendChild(synthModeContainer)
+
+    const synthModeMenu = document.createElement("select")
+    synthModeMenu.name = "synth-mode-menu"
+    synthModeMenu.classList.add("synth-mode-menu")
+    for (let i = 0; i < synthModes.length; i++) {
+        let optionValue = synthModes[i];
+        let optionElement = document.createElement("option")
+        optionElement.textContent = optionValue;
+        optionElement.value = optionValue;
+        synthModeMenu.appendChild(optionElement);
+    }
+
+    synthModeMenu.addEventListener("change", () => {
+        synths = initializeSynths(synthModeMenu.value)
+    })
+
+    synthModeContainer.appendChild(synthModeMenu);
 
     // Toggle switch for blocks/text
     const toggleContainer = document.createElement("div");
@@ -939,33 +1005,7 @@ function startSequencer() {
 
     // Initialize synths if not already created
     // TODO: we may need more synths for poly mode
-    if (synths.length === 0) {
-        for (let i = 0; i < MAX_GRID_SIZE; i++) {
-            synths.push(
-                new Tone.Synth({
-                    oscillator: { type: "fatsawtooth" },
-                    envelope: {
-                        attack: 0.001,
-                        decay: 0.1,
-                        sustain: 0.1,
-                        release: 0.5,
-                    },
-                }).toDestination()
-            );
-        }
-    }
 
-    if (!kickPlayer) {
-        kickPlayer = new Tone.Player("bassdrumBD0075.WAV").toDestination()
-    }
-
-    if (!snarePlayer) {
-        snarePlayer = new Tone.Player("snareSD7550.WAV").toDestination()
-    }
-
-    if (!hiHatPlayer) {
-        hiHatPlayer = new Tone.Player("openhatOH10.WAV").toDestination()
-    };
 
     // Initialize sequencer loop if not already created
     if (!sequencerLoop) {
