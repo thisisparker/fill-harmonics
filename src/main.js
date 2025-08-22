@@ -457,6 +457,18 @@ function createCell(i, j) {
             }
 
             updateGrid();
+        } else if (e.key === ">") {
+            e.preventDefault();
+            // Toggle block directly
+            const i = parseInt(cell.dataset.row);
+            const j = parseInt(cell.dataset.col);
+
+            cell.classList.toggle("block");
+
+            if (cell.classList.contains("block")) {
+                cell.dataset.text = "";
+            }
+            updateGrid();
         }
     });
 
