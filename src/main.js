@@ -9,12 +9,11 @@ let sequencerLoop = null;
 let currentStep = 0;
 let blocksToggleSwitch;
 let synths = []; // Array of synths, one for each row
-let kickSynth = null;
-let snareSynth = null;
-let hiHatSynth = null;
+let kickPlayer = null;
+let snarePlayer = null;
+let hiHatPlayer = null;
 let acrossWords = [];
-let lastTriggerTime = 0;
-let triggerCounter = 0;
+let timeOffset = 0;
 const playModes = Object.freeze({
     grid: 'grid',
     word: 'word'
@@ -851,6 +850,8 @@ function playStep(time) {
     });
     // Highlight current step column and schedule notes
 
+    timeOffset = 0;
+
     if (playMode === playModes.grid) {
         if (currentStep >= gridSize) {
             currentStep = 0;
@@ -882,35 +883,28 @@ function playStep(time) {
 function handleCell(cell, time) {
     cell.classList.add("active");
 
-    // Add a small offset to prevent "same time" errors
-    // Use a counter to ensure unique times even for multiple simultaneous triggers
-    if (time === lastTriggerTime) {
-        triggerCounter++;
-    } else {
-        triggerCounter = 0;
-    }
-    const triggerTime = time + (triggerCounter * 0.0001);
-    lastTriggerTime = time;
+    const triggerTime = time + timeOffset;
 
     if (playMode === playModes.grid && cell.classList.contains("block")) {
         cell.classList.add("playing");
         playNote(cell, triggerTime);
+        timeOffset += 0.0001
     } else if (cell.dataset.text === 'K') {
         cell.classList.add("playing");
-        kickSynth.triggerAttackRelease("C2", "16n", triggerTime);
+        kickPlayer.start(triggerTime);
+        timeOffset += 0.0001
     } else if (cell.dataset.text === 'S') {
         cell.classList.add("playing");
-        snareSynth.triggerAttackRelease("C4", "16n", triggerTime);
-        // Also trigger the noise layer for the snare crack
-        if (snareSynth.noiseLayer) {
-            snareSynth.noiseLayer.triggerAttackRelease("16n", triggerTime + 0.0001);
-        }
+        snarePlayer.start(triggerTime);
+        timeOffset += 0.0001
     } else if (cell.dataset.text === 'H') {
         cell.classList.add("playing");
-        hiHatSynth.triggerAttackRelease("16n", triggerTime);
+        hiHatPlayer.start(triggerTime);
+        timeOffset += 0.0001
     } else if (playMode === playModes.word && cell.dataset.text) {
         cell.classList.add("playing")
         playNote(cell, triggerTime)
+        timeOffset += 0.0001
     }
 }
 
@@ -949,62 +943,17 @@ function startSequencer() {
         }
     }
 
-    if (!kickSynth) {
-        kickSynth = new Tone.PolySynth(Tone.MembraneSynth).toDestination()
-        kickSynth.set({maxPolyphony: 4})
+    if (!kickPlayer) {
+        kickPlayer = new Tone.Player("bassdrumBD0075.WAV").toDestination()
     }
 
-    if (!snareSynth) {
-        // Create a proper snare sound by layering noise and a pitched oscillator
-        snareSynth = new Tone.PolySynth(Tone.Synth, {
-            frequency: 80,
-            volume: -15,
-            oscillator: {
-                type: "triangle"
-            },
-            envelope: {
-                attack: 0.001,
-                decay: 0.2,
-                sustain: 0,
-                release: 0.1,
-            }
-        }).toDestination();
-
-        // Add a noise layer for the snare "crack"
-        const snareNoise = new Tone.NoiseSynth({
-            noise: { type: "white" },
-            envelope: {
-                attack: 0.001,
-                decay: 0.1,
-                sustain: 0,
-                release: 0.05,
-            }
-        }).toDestination();
-
-        // Store both synths in the snareSynth object
-        snareSynth.noiseLayer = snareNoise;
-        snareSynth.set({maxPolyphony: 4});
+    if (!snarePlayer) {
+        snarePlayer = new Tone.Player("snareSD7550.WAV").toDestination()
     }
 
-    console.log(snareSynth)
-
-    const reverb = new Tone.Reverb({ decay: 0.5, wet: 0.2 }).toDestination();
-
-    if (!hiHatSynth) {
-        hiHatSynth = new Tone.PolySynth(Tone.MetalSynth, {
-            frequency: 400,
-            envelope: {
-                attack: 0.005,
-                decay: 0.2,
-            },
-            harmonicity: 100,
-            modulationIndex: 80,
-            resonance: 7000,
-            octaves: 1.5
-        }).connect(reverb)
+    if (!hiHatPlayer) {
+        hiHatPlayer = new Tone.Player("openhatOH10.WAV").toDestination()
     };
-
-    hiHatSynth.set({maxPolyphony: 4});
 
     // Initialize sequencer loop if not already created
     if (!sequencerLoop) {
