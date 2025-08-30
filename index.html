@@ -17,8 +17,36 @@
   <div id="info-modal" class="hidden">
     <div class="modal-content">
       <button class="close-button">×</button>
-      <p>fill harmonics is a crossword-themed music machine built by parker higgins and natan last.</p>
-      <p>natan has written a book about crosswords, coming out in november. pre-order now!</p>
+      <p><strong>fill harmonics</strong> is a crossword-themed music machine created by <a href="https://parkerhiggins.net/">Parker Higgins</a> and <a href="https://natanlast.com/">Natan Last</a>.
+        Parker is an artist and activist. Natan is a policy researcher and writer, whose book on the history of
+        crosswords,
+        <a href="https://www.penguinrandomhouse.com/books/723796/across-the-universe-by-natan-last/">Across the
+          Universe</a>, comes out November 2025. Both of them have published crosswords in outlets like <cite>The New
+          York Times</cite>
+        and <cite>The New Yorker</cite>.
+      </p>
+      <h3>How to play</h3>
+      <p>In <em>block entry mode</em>, clicking creates or removes a block in that square, as well as one in the square that
+        is radially
+        symmetrical with it. Changing the size of the grid changes the radial symmetry.</p>
+
+      <p>In <em>text entry mode</em>, the keyboard enters letters in the grid—“fill” in crossword parlance. Entering a
+        period will
+        create a block in the highlighted square as well as its symmetrical counterpart.</p>
+
+      <p>In either mode, holding the shift key while changing a block affects the current square but not its symmetrical
+        counterpart.</p>
+
+      <p>In <em>grid play mode</em>, the beat steps through each column to determine which sounds are played. Blocks
+        trigger notes
+        whose pitch is based on their row number. Letters in the grid are ignored except for K, S, and H, which trigger
+        kick drum, snare, and hi-hat sounds, respectively.</p>
+
+      <p>In <em>word play mode</em>, the beat proceeds polymetrically through every across entry simultaneously. In
+        other words,
+        blocks are now inactive musically, except for defining the length of each pattern. The letters K, S, and H again
+        trigger kicks, snares, and hi-hats, but now, other letters trigger notes based on their row number.</p>
+
     </div>
   </div>
   <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
@@ -42,6 +70,12 @@
     // Close modal when clicking outside content
     infoModal.addEventListener("click", (e) => {
       if (e.target === infoModal) {
+        infoModal.classList.add("hidden")
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key == 'Escape') {
         infoModal.classList.add("hidden")
       }
     });
