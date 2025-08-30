@@ -119,13 +119,13 @@ h1 {
     display: grid;
     width: 320px;
     grid-template-areas:
-        "size-slider size-slider size-slider"
-        "block-toggle block-toggle clear-button"
-        "bpm-input play-mode-toggle play-mode-toggle"
-        "synth-mode synth-mode synth-mode"
-        "play-button play-button play-button"
-        "share-button share-button share-button";
-    grid-template-columns: 1fr 1fr 1fr;
+        "size-slider size-slider size-slider size-slider size-slider size-slider"
+        "block-toggle block-toggle block-toggle block-toggle clear-button clear-button"
+        "bpm-input bpm-input play-mode-toggle play-mode-toggle play-mode-toggle play-mode-toggle"
+        "synth-mode synth-mode synth-mode drum-mode drum-mode drum-mode"
+        "play-button play-button play-button play-button play-button play-button"
+        "share-button share-button share-button share-button share-button share-button";
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
     grid-template-rows: 4rem 4rem 4rem 4rem 4rem 4rem;
     height: min-content;
     gap: 1px;
@@ -183,6 +183,21 @@ h1 {
     align-items: center;
     justify-content: space-around;
     border-top: 1px solid #000;
+    border-right: 1px solid #000;
+}
+
+.drum-mode-container {
+    grid-area: drum-mode;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    border-top: 1px solid #000;
+}
+
+.synth-mode-container, .drum-mode-container {
+    select {
+        width: 70%;
+    }
 }
 
 .grid {

@@ -9,9 +9,9 @@ let sequencerLoop = null;
 let currentStep = 0;
 let blocksToggleSwitch;
 let synths = initializeSynths('sine')
-let kickPlayer = new Tone.Player("bassdrumBD0075.WAV").toDestination();
-let snarePlayer = new Tone.Player("snareSD7550.WAV").toDestination();
-let hiHatPlayer = new Tone.Player("openhatOH10.WAV").toDestination();
+let drums = {}
+let drumMode = 'default'
+let allDrums = {} // Store all drum modes for instant switching
 let acrossWords = [];
 let timeOffset = 0;
 const playModes = Object.freeze({
@@ -51,6 +51,33 @@ const synthModes = [
     "fatsawtooth",
 ]
 
+const drumModes = {
+    'default':
+    {
+        kick: "bassdrumBD0075.WAV",
+        snare: "snareSD7550.WAV",
+        hat: "openhatOH10.WAV"
+    },
+    'sp202':
+    {
+        kick: "k1 [lofi1].wav",
+        snare: "sn1 [lofi1].wav",
+        hat: "hh5 [lofi1].wav"
+    },
+    'cr1000':
+    {
+        kick: "Bassdrum.wav",
+        snare: "Snaredrum.wav",
+        hat: "Hat Closed.wav"
+    },
+    'rx21':
+    {
+        kick: "RX21Kick.wav",
+        snare: "RX21Clap.wav",
+        hat: "RX21Hat_C.wav"
+    }
+}
+
 function initializeSynths(mode) {
     let newSynths = [];
 
@@ -69,6 +96,26 @@ function initializeSynths(mode) {
     }
 
     return newSynths;
+}
+
+function initializeDrums(mode) {
+    const newDrums = {};
+    newDrums.kick = new Tone.Player(drumModes[mode]['kick']).toDestination();
+    newDrums.snare = new Tone.Player(drumModes[mode]['snare']).toDestination();
+    newDrums.hat = new Tone.Player(drumModes[mode]['hat']).toDestination();
+    
+    // Preload all samples for this mode
+    newDrums.kick.load();
+    newDrums.snare.load();
+    newDrums.hat.load();
+    
+    return newDrums;
+}
+
+function preloadAllDrums() {
+    for (const mode in drumModes) {
+        allDrums[mode] = initializeDrums(mode);
+    }
 }
 
 function getAcrossWords() {
@@ -614,6 +661,10 @@ function encodeGridState() {
     const synthMode = synthModeMenu.value;
     params.set("synth", synthMode)
 
+    const drumModeMenu = document.querySelector(".drum-mode-menu")
+    const drumMode = drumModeMenu.value;
+    params.set("drums", drumMode)
+
     // Add playback mode (grid/word)
     params.set("play", playMode);
 
@@ -629,6 +680,7 @@ function decodeGridState(searchString) {
             bpm: parseInt(params.get("bpm")) || 120,
             entry: params.get("entry") || "blocks",
             synth: params.get("synth") || "sine",
+            drums: params.get("drums") || "default",
             play: params.get("play") || "blocks",
         };
     } catch (e) {
@@ -643,6 +695,8 @@ function loadStateFromQueries() {
 
     const state = decodeGridState(searchString);
     if (!state || !state.grid) return;
+
+    console.log(state)
 
     const gridString = state.grid;
     const gridSizeFromState = state.size;
@@ -683,6 +737,15 @@ function loadStateFromQueries() {
     if (state.synth && synthModeMenu) {
         synthModeMenu.value = state.synth;
         synthModeMenu.dispatchEvent(new Event("change"));
+    }
+
+    // Set drum mode
+    const drumModeMenu = document.querySelector(".drum-mode-menu")
+
+    if (state.drums && drumModeMenu) {
+        drumModeMenu.value = state.drums;
+        drumMode = state.drums;
+        drums = allDrums[drumMode];
     }
 
     // Set playback mode (grid/word)
@@ -806,6 +869,32 @@ function main() {
     })
 
     synthModeContainer.appendChild(synthModeMenu);
+
+    const drumModeContainer = document.createElement("div");
+    drumModeContainer.classList.add("drum-mode-container");
+    controlPanel.appendChild(drumModeContainer)
+
+    const drumModeMenu = document.createElement("select")
+    drumModeMenu.name = "drum-mode-menu"
+    drumModeMenu.classList.add("drum-mode-menu")
+    for (const mode in drumModes) {
+        let optionValue = mode;
+        let optionElement = document.createElement("option")
+        optionElement.textContent = optionValue;
+        optionElement.value = optionValue;
+        drumModeMenu.appendChild(optionElement);
+    }
+
+    drumModeContainer.appendChild(drumModeMenu);
+
+    drumModeMenu.addEventListener("change", () => {
+        drumMode = drumModeMenu.value;
+        drums = allDrums[drumMode];
+    })
+
+    // Preload all drum modes and set default
+    preloadAllDrums();
+    drums = allDrums[drumMode];
 
     // Toggle switch for blocks/text
     const toggleContainer = document.createElement("div");
@@ -969,15 +1058,15 @@ function handleCell(cell, time) {
         timeOffset += 0.0001
     } else if (cell.dataset.text === 'K') {
         cell.classList.add("playing");
-        kickPlayer.start(triggerTime);
+        drums.kick.start(triggerTime);
         timeOffset += 0.0001
     } else if (cell.dataset.text === 'S') {
         cell.classList.add("playing");
-        snarePlayer.start(triggerTime);
+        drums.snare.start(triggerTime);
         timeOffset += 0.0001
     } else if (cell.dataset.text === 'H') {
         cell.classList.add("playing");
-        hiHatPlayer.start(triggerTime);
+        drums.hat.start(triggerTime);
         timeOffset += 0.0001
     } else if (playMode === playModes.word && cell.dataset.text) {
         cell.classList.add("playing")
