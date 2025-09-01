@@ -75,6 +75,12 @@ const drumModes = {
         kick: "RX21Kick.wav",
         snare: "RX21Clap.wav",
         hat: "RX21Hat_C.wav"
+    },
+    'tr808':
+    {
+        kick: "TR808 Kick 2.wav",
+        snare: "TR808 SD 5.wav",
+        hat: "TR808 OHH 1.wav"
     }
 }
 
