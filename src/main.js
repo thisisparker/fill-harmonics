@@ -104,24 +104,19 @@ function initializeSynths(mode) {
     return newSynths;
 }
 
-function initializeDrums(mode) {
+function initializeDrums() {
     const newDrums = {};
-    newDrums.kick = new Tone.Player(drumModes[mode]['kick']).toDestination();
-    newDrums.snare = new Tone.Player(drumModes[mode]['snare']).toDestination();
-    newDrums.hat = new Tone.Player(drumModes[mode]['hat']).toDestination();
-    
-    // Preload all samples for this mode
-    newDrums.kick.load();
-    newDrums.snare.load();
-    newDrums.hat.load();
-    
-    return newDrums;
-}
 
-function preloadAllDrums() {
     for (const mode in drumModes) {
-        allDrums[mode] = initializeDrums(mode);
+        newDrums[mode] = new Tone.Players({
+            "kick": drumModes[mode]['kick'],
+            "snare": drumModes[mode]['snare'],
+            "hat": drumModes[mode]['hat']
+        }
+        ).toDestination()
     }
+
+    return newDrums;
 }
 
 function getAcrossWords() {
@@ -343,7 +338,6 @@ function clearBlocks() {
     });
     // Clear saved states as well
     for (const [cell, state] of cellStates) {
-        console.log(cell);
         if (state === ".") {
             cellStates.set(cell, "");
         }
@@ -899,7 +893,7 @@ function main() {
     })
 
     // Preload all drum modes and set default
-    preloadAllDrums();
+    allDrums = initializeDrums();
     drums = allDrums[drumMode];
 
     // Toggle switch for blocks/text
@@ -1056,6 +1050,8 @@ function playStep(time) {
 function handleCell(cell, time) {
     cell.classList.add("active");
 
+    console.log(drums)
+
     const triggerTime = time + timeOffset;
 
     if (playMode === playModes.grid && cell.classList.contains("block")) {
@@ -1064,15 +1060,15 @@ function handleCell(cell, time) {
         timeOffset += 0.0001
     } else if (cell.dataset.text === 'K') {
         cell.classList.add("playing");
-        drums.kick.start(triggerTime);
+        drums.player('kick').start(triggerTime);
         timeOffset += 0.0001
     } else if (cell.dataset.text === 'S') {
         cell.classList.add("playing");
-        drums.snare.start(triggerTime);
+        drums.player('snare').start(triggerTime);
         timeOffset += 0.0001
     } else if (cell.dataset.text === 'H') {
         cell.classList.add("playing");
-        drums.hat.start(triggerTime);
+        drums.player('hat').start(triggerTime);
         timeOffset += 0.0001
     } else if (playMode === playModes.word && cell.dataset.text) {
         cell.classList.add("playing")
@@ -1097,10 +1093,6 @@ function startSequencer() {
     if (navigator.audioSession) {
         navigator.audioSession.type = "playback";
     }
-
-    // Initialize synths if not already created
-    // TODO: we may need more synths for poly mode
-
 
     // Initialize sequencer loop if not already created
     if (!sequencerLoop) {
