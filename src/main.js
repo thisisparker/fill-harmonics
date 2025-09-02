@@ -233,8 +233,10 @@ function changeGridSize(newGridSize) {
                 // Restore state if it exists
                 const stateKey = `${i},${j}`;
                 if (cellStates.has(stateKey)) {
-                    if (cellStates.get(stateKey)) {
+                    if (cellStates.get(stateKey) === ".") {
                         cell.classList.add("block");
+                    } else {
+                        cell.dataset.text = cellStates.get(stateKey);
                     }
                 }
                 grid.appendChild(cell);
