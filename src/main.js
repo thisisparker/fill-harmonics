@@ -14,6 +14,7 @@ let drumMode = 'default'
 let allDrums = {} // Store all drum modes for instant switching
 let acrossWords = [];
 let timeOffset = 0;
+let alreadyPlaying = {};
 const playModes = Object.freeze({
     grid: 'grid',
     word: 'word'
@@ -1018,6 +1019,11 @@ function playStep(time) {
     // Highlight current step column and schedule notes
 
     timeOffset = 0;
+    alreadyPlaying = {
+        kick: false,
+        snare: false,
+        hat: false
+    }
 
     if (playMode === playModes.grid) {
         if (currentStep >= gridSize) {
@@ -1050,8 +1056,6 @@ function playStep(time) {
 function handleCell(cell, time) {
     cell.classList.add("active");
 
-    console.log(drums)
-
     const triggerTime = time + timeOffset;
 
     if (playMode === playModes.grid && cell.classList.contains("block")) {
@@ -1060,16 +1064,25 @@ function handleCell(cell, time) {
         timeOffset += 0.0001
     } else if (cell.dataset.text === 'K') {
         cell.classList.add("playing");
-        drums.player('kick').start(triggerTime);
-        timeOffset += 0.0001
+        if (!alreadyPlaying.kick) {
+            drums.player('kick').start(triggerTime);
+            timeOffset += 0.0001
+            alreadyPlaying.kick = true
+        }
     } else if (cell.dataset.text === 'S') {
         cell.classList.add("playing");
-        drums.player('snare').start(triggerTime);
-        timeOffset += 0.0001
+        if (!alreadyPlaying.snare) {
+            drums.player('snare').start(triggerTime);
+            timeOffset += 0.0001
+            alreadyPlaying.snare = true
+        }
     } else if (cell.dataset.text === 'H') {
         cell.classList.add("playing");
-        drums.player('hat').start(triggerTime);
-        timeOffset += 0.0001
+        if (!alreadyPlaying.snare) {
+            drums.player('hat').start(triggerTime);
+            timeOffset += 0.0001
+            alreadyPlaying.hat = true
+        }
     } else if (playMode === playModes.word && cell.dataset.text) {
         cell.classList.add("playing")
         playNote(cell, triggerTime)
