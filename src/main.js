@@ -1080,7 +1080,7 @@ function handleCell(cell, time) {
         }
     } else if (cell.dataset.text === 'H') {
         cell.classList.add("playing");
-        if (!alreadyPlaying.snare) {
+        if (!alreadyPlaying.hat) {
             drums.player('hat').start(triggerTime);
             timeOffset += 0.0001
             alreadyPlaying.hat = true
